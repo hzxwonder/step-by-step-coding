@@ -2,7 +2,14 @@
 
 [简体中文](README.zh-CN.md) · English · [MIT license](LICENSE)
 
-Build software one approved step at a time. Learn how the code works as you proceed.
+**Align requirements through step-by-step collaboration, and understand and control your project code throughout development.**
+
+This skill does not aim to improve the completeness of the agent's final output.
+It helps you and the agent agree on requirements as the work proceeds.
+You participate in decisions, understand each code change, and control the direction and pace of development.
+
+For each step, the agent explains the purpose, the files it changes, how the code works, and what the tests demonstrate.
+You decide whether to revise the work, accept the step, or continue.
 
 This skill helps an AI coding agent discuss requirements, write plans, implement one step, test the result, and explain the code.
 You decide when each step starts and when it is complete.
