@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.DS_Store
+.venv/
+.ai-collab/
+**/preacceptance-results*.md
+.env
+.env.*
+*.pem
+*.key
