@@ -275,7 +275,7 @@ def cmd_documented(repo, state, a):
         fail("请先生成有实质内容的 explain.md")
     state["phase"] = "precheck_setup"
     save(repo, state, "当前步骤讲解文档已生成；进入预验收问题准备阶段")
-    print("讲解已就绪：先与用户交流疑问，再写 4–6 道核心问题到 preacceptance.md，并逐题预验收。")
+    print("讲解已就绪；整理必要的行为确认项，沿用明确的原话，只询问尚未解决的决定。")
 
 
 
@@ -349,29 +349,32 @@ def validate_question_file(path):
         fail("预验收文件还有模板占位文字，请用本步已验证需求和代码证据替换")
     headings = list(re.finditer(r"(?m)^### (Q[1-9][0-9]*)\s+([^\n]+)$", content))
     questions = [m.group(1) for m in headings]
-    if not 4 <= len(questions) <= 6:
-        fail("每步必须有 4–6 道需求对齐选择题")
+    if not 1 <= len(questions) <= 6:
+        fail("请记录 1–6 项必要的行为约定；已有明确原话的项目无需重问")
     if questions != [f"Q{i}" for i in range(1, len(questions) + 1)]:
         fail("题号必须从 Q1 连续编号")
     baseline_map = {}
+    option_map = {}
     for i, match in enumerate(headings):
         block = content[match.end():headings[i + 1].start() if i + 1 < len(headings) else len(content)]
         options = re.findall(r"(?m)^- ([ABCD])\.\s+([^\n]+)$", block)
-        if [k for k, _ in options] != ["A", "B", "C", "D"]:
-            fail(f"{questions[i]} 必须恰好有按 A/B/C/D 排列的四个实际行为选项")
+        keys = [k for k, _ in options]
+        if keys not in (["A", "B", "D"], ["A", "B", "C", "D"]):
+            fail(f"{questions[i]} 需要两个或三个实际行为选项，并保留 D 作为讨论出口")
         labels = [v.strip() for _, v in options]
-        if any(len(v) < 3 for v in labels) or len(set(labels)) != 4:
+        if any(len(v) < 3 for v in labels) or len(set(labels)) != len(labels):
             fail(f"{questions[i]} 选项必须具体、不重复，且不能为空")
         if not any(t in labels[-1] for t in ("其他", "不确定", "需要讨论", "不符合")):
             fail(f"{questions[i]} 的 D 选项必须允许用户表达不确定、其他期望或需要讨论")
         baseline = re.findall(r"(?m)^- \*\*当前约定选项\*\*：([ABCD])\s*$", block)
-        if len(baseline) != 1 or baseline[0] == "D":
-            fail(f"{questions[i]} 必须有唯一的当前约定选项 A/B/C（不能把其他/不确定作为已批准方案）")
+        if len(baseline) != 1 or baseline[0] not in keys[:-1]:
+            fail(f"{questions[i]} 的当前约定必须对应一个实际提供的行为选项")
         for field in ("**证据**", "**分歧处理**"):
             if field not in block:
                 fail(f"{questions[i]} 缺少 {field}，不能开始预验收")
         baseline_map[questions[i]] = baseline[0]
-    return questions, baseline_map
+        option_map[questions[i]] = keys
+    return questions, baseline_map, option_map
 
 
 def question_hashes(path):
@@ -396,7 +399,7 @@ def invalidate_affected(repo, state, affected):
 def cmd_start_precheck(repo, state, a):
     need(state, "precheck_setup")
     path = precheck_file(repo, state)
-    questions, baselines = validate_question_file(path)
+    questions, baselines, options = validate_question_file(path)
     hashes = question_hashes(path)
     previous = state.get("precheck") or empty_precheck()
     old_hashes = previous.get("question_hashes", {})
@@ -406,6 +409,7 @@ def cmd_start_precheck(repo, state, a):
                 and record.get("choice") == baselines[q]
                 and (old_hashes.get(q) == hashes[q] or (not old_hashes and same_file))}
     state["precheck"] = {"schema": PRECHECK_SCHEMA, "questions": questions, "baselines": baselines,
+                         "options": options,
                          "results": retained, "attempts": previous["attempts"],
                          "question_hashes": hashes, "file_hash": file_digest(path),
                          "source_hashes": collect_source_hashes(repo, state)}
@@ -427,6 +431,8 @@ def cmd_answer_precheck(repo, state, a):
     remaining = [x for x in pre["questions"] if x not in pre["results"]]
     if not remaining or a.id != remaining[0]:
         fail("必须逐题确认，当前应为 " + (remaining[0] if remaining else "无"))
+    if a.choice not in pre.get("options", {}).get(a.id, list("ABCD")):
+        fail("该确认项未提供这个选项；请保留用户原话，先澄清实际期望")
     for field in ("user_answer", "summary", "evidence"):
         if not getattr(a, field, "").strip():
             fail("必须记录用户真实选择、简短对齐说明与具体需求/实现证据")
@@ -497,7 +503,7 @@ def cmd_accept(repo, state, a):
     pre = state.get("precheck", {})
     qs = pre.get("questions", [])
     passed = pre.get("results", {})
-    if pre.get("schema") != PRECHECK_SCHEMA or not 4 <= len(qs) <= 6 or any(passed.get(q, {}).get("result") != "aligned" for q in qs):
+    if pre.get("schema") != PRECHECK_SCHEMA or not 1 <= len(qs) <= 6 or any(passed.get(q, {}).get("result") != "aligned" for q in qs):
         fail("核心需求细节尚未全部由用户逐题选择并确认对齐，禁止正式验收")
     if pre.get("file_hash") != file_digest(precheck_file(repo, state)):
         fail("预验收题库被修改，需重设并重新逐题预验收")
@@ -560,7 +566,7 @@ def parser():
     x = sub.add_parser("revise", help="用户要求修改当前已完成/待验收步骤")
     x.add_argument("--user-quote", required=True)
     x.add_argument("--affected", nargs="*", default=[], help="受行为变化影响、需要补充确认的题号，如 Q3")
-    sub.add_parser("start-precheck", help="读取当前步 4–6 道核心题并锁定预验收题库")
+    sub.add_parser("start-precheck", help="登记必要的行为约定并锁定当前实现证据")
     x = sub.add_parser("answer-precheck", help="记录一个用户的选择，自动比较已批准方案；不进行知识评分")
     x.add_argument("--id", required=True); x.add_argument("--choice", choices=list("ABCD"), required=True)
     x.add_argument("--user-answer", required=True); x.add_argument("--summary", required=True)

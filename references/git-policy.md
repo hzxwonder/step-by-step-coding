@@ -9,7 +9,7 @@
 6. 用户必须知道每个**已验收**步骤或再次验收的修订会自动执行一次 commit/push。若不接受，请使用本地模式。
 
 ## 每步验收后的安全工作流（在当前步骤内）
-- 确认测试通过，`verification.md` 有真实证据，`explain.md` 已经讨论、4–6 道需求对齐选择题全部确认一致且用户明确正式验收。
+- 确认测试通过，`verification.md` 有真实证据，`explain.md` 已经讲解，必要行为约定有真实原话和实现证据，用户明确认可当前步骤；认可可用自然表达。
 - `git status --short`、`git diff --stat`、`git diff`，同时查看未跟踪文件；禁止将用户无关文件一起上传。
 - 重点检查 `.env`、token、密钥、账号、私有记录、数据集、生成文件、`.ai-collab/**/state.json` 和 `.ai-collab/active.json`、`preacceptance-results.md`（可能包含用户原话）以及 `preacceptance-results-old-*.md`；这些本地状态/回答默认建议 `.gitignore`，不要推送。
 - 仅对**已获批改动列表和本次步骤文档**执行精确 `git add path1 path2 ...`（不用 `git add .`、`git add -A`）。`git diff --cached` 再核对一次。

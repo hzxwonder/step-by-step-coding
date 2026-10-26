@@ -73,23 +73,23 @@ class WorkflowTest(unittest.TestCase):
         self.call("allow-path", "--step", "2", "--path", "src/two.py") if steps > 1 else None
         self.call("approve-plan", "--user-quote", "我认可两个计划")
 
-    def prepare_docs(self, step):
+    def prepare_docs(self, step, choices=("A", "B", "C", "A"), two_options=False):
         folder = self.repo / "docs" / "ai-collab" / "demo" / "steps" / f"{step:02d}-step"
         (folder / "verification.md").write_text("# 验证\n命令: python -m pytest; exit code 0; 通过。\n")
         (folder / "explain.md").write_text("# 代码讲解\n" + "解释真实输入、输出及边界条件和如何验证。" * 20)
         folder_source = self.repo / "src"
         folder_source.mkdir(exist_ok=True)
         (folder_source / ("one.py" if step == 1 else "two.py")).write_text("def feature():\n    return 'ready'\n")
+        options = ("- A. 输入合法时展示新增结果\n"
+                   "- B. 输入合法后仅显示提示\n"
+                   + ("" if two_options else "- C. 输入合法后直接返回首页\n")
+                   + "- D. 其他 / 不确定 / 想先讨论\n")
         (folder / "preacceptance.md").write_text("# 预验收\n" + "\n".join(
-            f"### Q{i} 你希望这一步采用哪种行为？\n"
-            f"- A. 输入合法时展示新增结果\n"
-            f"- B. 输入合法后仅显示提示\n"
-            f"- C. 输入合法后直接返回首页\n"
-            f"- D. 其他 / 不确定 / 想先讨论\n"
-            f"- **当前约定选项**：{['A','B','C','A'][i-1]}\n"
-            f"- **证据**：src/one.py 与当前步骤 plan.md\n"
-            f"- **分歧处理**：讨论是否改变当前步骤范围\n"
-            for i in range(1, 5)
+            f"### Q{i} 你希望这一步采用哪种行为？\n" + options
+            + f"- **当前约定选项**：{choice}\n"
+            + "- **证据**：src/one.py 与当前步骤 plan.md\n"
+            + "- **分歧处理**：讨论是否改变当前步骤范围\n"
+            for i, choice in enumerate(choices, 1)
         ), encoding="utf8")
 
     def aligned_answer(self, i):
@@ -392,6 +392,84 @@ class WorkflowTest(unittest.TestCase):
         self.call("start-precheck")
         self.assertEqual(self.read_state()["phase"], "await_acceptance")
         self.call("accept", "--user-quote", "正式验收")
+
+    def test_existing_confirmation_state_resumes_without_new_options_field(self):
+        self.init_plan(steps=1)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "开始第一步")
+        self.prepare_docs(1)
+        self.call("verified", "--result", "pass", "--evidence", "功能测试通过")
+        self.call("documented")
+        self.call("start-precheck")
+        self.aligned_answer(1)
+        state = self.read_state()
+        state["precheck"].pop("options")
+        path = self.repo / ".ai-collab/demo/state.json"
+        path.write_text(json.dumps(state, ensure_ascii=False))
+        for i in range(2, 5):
+            self.aligned_answer(i)
+        self.assertEqual(len(self.read_state()["precheck"]["results"]), 4)
+        self.call("accept", "--user-quote", "这部分符合预期")
+        self.assertEqual(self.read_state()["phase"], "completed")
+
+    def test_natural_replies_and_two_options_keep_step_authorization_separate(self):
+        self.init_plan(steps=2)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "先做刚才确定的第一步")
+        self.prepare_docs(1, choices=("A", "B"), two_options=True)
+        self.call("verified", "--result", "pass", "--evidence", "功能测试通过")
+        self.call("documented")
+        self.call("start-precheck")
+        for q, choice, quote in [("Q1", "A", "保存后就让我看到新记录"),
+                                  ("Q2", "B", "这里只提醒我保存好了就行")]:
+            self.call("answer-precheck", "--id", q, "--choice", choice,
+                      "--user-answer", quote, "--summary", "用户原话明确表达当前行为",
+                      "--evidence", "plan.md 与 src/one.py 的实际验证")
+            self.assertEqual(self.read_state()["precheck"]["results"][q]["user_answer"], quote)
+            if q == "Q1":
+                self.call("accept", "--user-quote", "这一步可以了", succeeds=False)
+        self.assertEqual(self.read_state()["phase"], "await_acceptance")
+        self.call("accept", "--user-quote", "这一步符合我的预期，就按现在这样")
+        self.assertEqual(self.read_state()["phase"], "await_next_step")
+        self.assertEqual(self.read_state()["current_step"], 1)
+
+    def test_single_confirmation_rejects_unoffered_choice_and_keeps_discussion(self):
+        self.init_plan(steps=1)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "开始第一步")
+        self.prepare_docs(1, choices=("A",), two_options=True)
+        self.call("verified", "--result", "pass", "--evidence", "功能测试通过")
+        self.call("documented")
+        self.call("start-precheck")
+        self.call("answer-precheck", "--id", "Q1", "--choice", "C",
+                  "--user-answer", "第三种", "--summary", "选择未提供的选项",
+                  "--evidence", "plan.md", succeeds=False)
+        self.assertEqual(self.read_state()["precheck"]["attempts"], [])
+        self.call("answer-precheck", "--id", "Q1", "--choice", "D",
+                  "--user-answer", "我还没想清楚，能举个例子吗", "--summary", "期望仍未明确",
+                  "--evidence", "plan.md")
+        self.assertEqual(self.read_state()["phase"], "precheck_discussion")
+        self.call("accept", "--user-quote", "通过", succeeds=False)
+        self.call("resume-precheck", "--user-quote", "明白了，我希望保存后直接显示新记录")
+        self.assertEqual(self.read_state()["phase"], "await_acceptance")
+
+    def test_confirmation_requires_real_options_and_an_available_baseline(self):
+        self.init_plan(steps=1)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "开始第一步")
+        self.prepare_docs(1, choices=("A",), two_options=True)
+        self.call("verified", "--result", "pass", "--evidence", "功能测试通过")
+        self.call("documented")
+        path = self.repo / "docs/ai-collab/demo/steps/01-step/preacceptance.md"
+        original = path.read_text()
+        for invalid in [original.replace("**当前约定选项**：A", "**当前约定选项**：C"),
+                        original.replace("- B. 输入合法后仅显示提示\n", ""),
+                        original.replace("### Q1", "### Note")]:
+            with self.subTest(content=invalid):
+                path.write_text(invalid)
+                self.call("start-precheck", succeeds=False)
+        path.write_text(original)
+        self.call("start-precheck")
 
 if __name__ == "__main__":
     unittest.main()

@@ -19,7 +19,8 @@ This README explains installation and use in English.
 
 ## What the skill does
 
-- Ask one question at a time.
+- Ask one question at a time, with a concrete example when useful.
+- Emphasize key decisions in bold. Explain necessary terms before you use them.
 - Explain why each planned step is necessary.
 - Wait for approval of the main plan and each step plan.
 - Implement only the step that you authorize.
@@ -31,6 +32,16 @@ This README explains installation and use in English.
 The behavior questions confirm the required behavior. They do not test your knowledge of code or terminology.
 After a change, the agent tests the affected implementation and confirms only new, changed, or unresolved behavior.
 The agent can use an earlier explicit request after it implements and verifies that request.
+
+## How the conversation works
+
+The agent explains one useful point at a time. It keeps detailed evidence in the project documents.
+When you need to decide, it describes the current behavior and offers two meaningful options, or three when necessary.
+You can answer in your own words or ask for an example. You do not need to select a letter.
+
+For example: **Should each save replace the previous record, or keep the previous record too?**
+The agent connects your decision to the relevant code and explains the result.
+If you feel lost, it explains a smaller example before it introduces more terms.
 
 ## Requirements
 
@@ -114,6 +125,10 @@ Use these messages as the task proceeds:
 | `开始预验收` | Confirm observable behavior, one question at a time. |
 | `本步骤验收通过` | Accept the current step after behavior confirmation. |
 | `开始第 2 步` | Start the next step. |
+
+The messages above are examples. You can use other words that clearly express the same decision.
+For example, “这一步符合我的预期，就这样” accepts the current step after behavior confirmation.
+The agent interprets your reply in context and records your actual words.
 
 Plan approval, step acceptance, and permission to start the next step are separate decisions.
 The agent must not treat one decision as all three.
