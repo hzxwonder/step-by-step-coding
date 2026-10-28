@@ -56,6 +56,11 @@ def check(payload, repo):
         if relative == base_dir + "plan.md" or (relative.startswith(base_dir + "steps/") and relative.endswith("/plan.md")):
             return None
         return "规划阶段只能编写当前任务的 plan.md，不得编写业务代码"
+    if phase in ("await_git_preference", "await_step_authorization", "await_next_step"):
+        planned_step = int(state["current_step"]) + 1 if phase == "await_next_step" else 1
+        next_plan = base_dir + f"steps/{planned_step:02d}-step/plan.md"
+        if relative in {base_dir + "plan.md", next_plan}:
+            return None
     if phase == "implementing":
         allowed = set(state.get("allowed_paths", {}).get(str(state["current_step"]), []))
         if relative in allowed or relative in {step_prefix + "plan.md", step_prefix + "verification.md", step_prefix + "explain.md", step_prefix + "preacceptance.md"}:

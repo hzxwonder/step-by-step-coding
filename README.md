@@ -2,13 +2,12 @@
 
 [简体中文](README.zh-CN.md) · English · [MIT license](LICENSE)
 
-**Align requirements through step-by-step collaboration, and understand and control your project code throughout development.**
+**Describe the result you want. Use examples and real runs to control the scope and pace of development.**
 
-This skill does not aim to improve the completeness of the agent's final output.
-It helps you and the agent agree on requirements as the work proceeds.
-You participate in decisions, understand each code change, and control the direction and pace of development.
+The agent investigates, recommends, implements, and verifies.
+You decide key behavior, accept each result, and authorize the next step. Read code explanations when you need them.
 
-For each step, the agent explains the purpose, the files it changes, how the code works, and what the tests demonstrate.
+For each step, the agent presents the result, evidence, and key implementation details. Read code explanations when you need them.
 You decide whether to revise the work, accept the step, or continue.
 
 This skill helps an AI coding agent discuss requirements, write plans, implement one step, test the result, and explain the code.
@@ -22,7 +21,7 @@ This README explains installation and use in English.
 - Ask one question at a time, with a concrete example when useful.
 - Emphasize key decisions in bold. Explain necessary terms before you use them.
 - Explain why each planned step is necessary.
-- Wait for approval of the main plan and each step plan.
+- Get approval for the overall route and the current step details.
 - Implement only the step that you authorize.
 - Test the result and explain the actual code.
 - Compare the implemented behavior with your expectations.
@@ -36,7 +35,7 @@ The agent can use an earlier explicit request after it implements and verifies t
 ## How the conversation works
 
 The agent explains one useful point at a time. It keeps detailed evidence in the project documents.
-When you need to decide, it describes the current behavior and offers two meaningful options, or three when necessary.
+When you need to decide, it explains the current behavior and gives a recommendation. It offers alternatives only for real tradeoffs.
 You can answer in your own words or ask for an example. You do not need to select a letter.
 
 For example: **Should each save replace the previous record, or keep the previous record too?**
@@ -105,13 +104,13 @@ Send this prompt in Codex:
 
 ```text
 $step-by-step-coding 帮我做一个本地记账工具。我是初学者。
-一次只讨论一个问题。先确认需求，再生成总计划和各步骤计划。
+先用具体例子对齐结果，给出建议，再按批准的步骤实施。
 ```
 
 In Claude Code, replace `$step-by-step-coding` with `/step-by-step-coding`.
 
-The agent should first clarify your goal. It should create plans after you confirm the requirements.
-Before implementation, it asks whether you want local files only or a GitHub/GitCode push after each accepted step.
+The agent drafts plans from your goal and asks only about key gaps. You approve the route before implementation.
+Files stay local by default. If you request remote backups, the agent confirms only the missing destination and branch details.
 If you choose a push, confirm the repository and branch.
 
 Use these messages as the task proceeds:
@@ -120,9 +119,9 @@ Use these messages as the task proceeds:
 |---|---|
 | `确认需求，生成计划` | Create the main plan and the step plans. |
 | `认可总计划及各步骤计划` | Approve the proposed plans. |
-| `开始第 1 步` | Implement the first step after the Git choice. |
+| `开始第 1 步` | Implement the first step under the approved plan. |
 | `解释一下这段代码` | Explain the current implementation. |
-| `开始预验收` | Confirm observable behavior, one question at a time. |
+| `开始预验收` | Check key agreements. Ask only about unresolved decisions. |
 | `本步骤验收通过` | Accept the current step after behavior confirmation. |
 | `开始第 2 步` | Start the next step. |
 
@@ -131,7 +130,7 @@ For example, “这一步符合我的预期，就这样” accepts the current s
 The agent interprets your reply in context and records your actual words.
 
 Plan approval, step acceptance, and permission to start the next step are separate decisions.
-The agent must not treat one decision as all three.
+One explicit statement can cover several decisions. The agent records each decision without asking again. One decision does not imply the others.
 
 ## Files in your project
 
@@ -152,7 +151,7 @@ docs/ai-collab/<task>/
 ```
 
 `plan.md` defines scope and purpose. `verification.md` records actual test results.
-`explain.md` teaches the implementation. `preacceptance.md` defines the behavior questions.
+`explain.md` explains the result and implementation. `preacceptance.md` records key agreements and evidence.
 The results file records your answers. The `.ai-collab` files record workflow state.
 
 Keep personal answers and workflow state local.

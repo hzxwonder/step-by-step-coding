@@ -104,6 +104,172 @@ class WorkflowTest(unittest.TestCase):
         for i in range(1, 5):
             self.aligned_answer(i)
 
+    def prepare_direct_precheck(self, count=1):
+        self.init_plan(steps=2)
+        for path in ("prompts/task.txt", "config/run.json", "outputs/demo/run.log"):
+            self.call("allow-path", "--step", "1", "--path", path)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "按计划开始第一步")
+        self.prepare_docs(1)
+        for path, content in (("prompts/task.txt", "返回记录中的金额，不补写缺失值。"),
+                              ("config/run.json", '{"missing_amount": null}'),
+                              ("outputs/demo/run.log", "start case=demo\ndone records=2\n")):
+            file = self.repo / path
+            file.parent.mkdir(parents=True, exist_ok=True)
+            file.write_text(content)
+        folder = self.repo / "docs/ai-collab/demo/steps/01-step"
+        (folder / "explain.md").write_text("# 结果\n运行 demo 生成两条记录。日志位于 outputs/demo/run.log，命令行可再次运行 demo。\n")
+        agreements = ["界面显示汇总结果", "prompt 不补写缺失金额", "配置保留缺失金额为空",
+                      "保留完整运行日志", "结果包含两条记录", "金额使用元作为单位", "旧结果保留在独立目录"]
+        (folder / "preacceptance.md").write_text("\n".join(
+            f"### Q{i} {behavior}\n- **当前约定**：{behavior}。\n"
+            "- **证据**：步骤计划、实际 prompt、生效配置和本次运行日志。\n"
+            "- **分歧处理**：核对受影响实现并重跑 demo。\n"
+            for i, behavior in enumerate(agreements[:count], 1)))
+        self.call("verified", "--result", "pass", "--evidence", "demo 真实运行记录与结果已核对")
+
+    def test_direct_agreements_reuse_one_explicit_acceptance_and_authorization(self):
+        self.prepare_direct_precheck(count=7)
+        self.call("documented")
+        self.call("start-precheck")
+        quote = "展示的约定和结果都符合预期，验收第一步并开始第二步"
+        for i in range(1, 8):
+            self.call("answer-precheck", "--id", f"Q{i}", "--user-answer", quote,
+                      "--summary", "用户接受整份结果，此原话明确覆盖本项约定",
+                      "--evidence", "当前步骤计划与 demo 运行记录")
+        self.call("accept", "--user-quote", quote)
+        self.assertEqual(self.read_state()["phase"], "await_next_step")
+        self.assertEqual(self.read_state()["current_step"], 1)
+        self.call("authorize", "--step", "2", "--user-quote", quote)
+        self.assertEqual(self.read_state()["current_step"], 2)
+
+    def test_short_explanation_is_valid_but_empty_document_is_not(self):
+        self.prepare_direct_precheck()
+        path = self.repo / "docs/ai-collab/demo/steps/01-step/explain.md"
+        concise = path.read_text()
+        self.assertLess(len(concise), 300)
+        path.write_text(" \n")
+        self.call("documented", succeeds=False)
+        path.write_text(concise)
+        self.call("documented")
+        self.assertEqual(self.read_state()["phase"], "precheck_setup")
+
+    def test_explanation_updates_preserve_locked_evidence_and_confirmation(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        self.call("start-precheck")
+        state_path = self.repo / ".ai-collab/demo/state.json"
+        state = self.read_state()
+        explanation = "docs/ai-collab/demo/steps/01-step/explain.md"
+        state["precheck"]["source_hashes"][explanation] = "previous-explanation-fingerprint"
+        state_path.write_text(json.dumps(state))
+        (self.repo / explanation).write_text("# 使用方式\n运行 demo。查看汇总表。金额单位是元。\n")
+        self.call("answer-precheck", "--id", "Q1", "--user-answer", "界面就按这个结果显示",
+                  "--summary", "原话明确确认显示方式", "--evidence", "demo 结果")
+        self.call("accept", "--user-quote", "结果符合预期")
+        self.assertEqual(self.read_state()["accepted_steps"], [1])
+
+    def test_actual_prompt_config_and_log_changes_block_acceptance(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        self.call("start-precheck")
+        self.call("answer-precheck", "--id", "Q1", "--user-answer", "显示方式符合预期",
+                  "--summary", "已核对", "--evidence", "demo 结果")
+        for path in ("prompts/task.txt", "config/run.json", "outputs/demo/run.log"):
+            with self.subTest(path=path):
+                file = self.repo / path
+                original = file.read_bytes()
+                file.write_text("changed after verification")
+                self.call("accept", "--user-quote", "验收", succeeds=False)
+                file.write_bytes(original)
+        self.call("accept", "--user-quote", "已核对的结果符合预期")
+
+    def test_direct_discussion_resumes_the_correct_item_out_of_order(self):
+        self.prepare_direct_precheck(count=2)
+        self.call("documented")
+        self.call("start-precheck")
+        self.call("answer-precheck", "--id", "Q2", "--user-answer", "我还想了解缺失金额的处理",
+                  "--summary", "仍需讨论", "--evidence", "实际 prompt", "--needs-discussion")
+        self.assertEqual(self.read_state()["phase"], "precheck_discussion")
+        self.call("accept", "--user-quote", "接受", succeeds=False)
+        self.call("resume-precheck", "--user-quote", "明白了，缺失金额就保留为空")
+        self.assertEqual(list(self.read_state()["precheck"]["results"]), ["Q2"])
+        self.assertEqual(self.read_state()["phase"], "precheck")
+
+    def test_direct_agreement_still_requires_real_quote_and_separate_step_acceptance(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        self.call("start-precheck")
+        self.call("answer-precheck", "--id", "Q1", "--user-answer", "",
+                  "--summary", "已核对", "--evidence", "demo 结果", succeeds=False)
+        self.assertEqual(self.read_state()["precheck"]["attempts"], [])
+        self.call("answer-precheck", "--id", "Q1", "--user-answer", "界面就这样显示",
+                  "--summary", "只确认显示方式", "--evidence", "demo 结果")
+        self.assertEqual(self.read_state()["phase"], "await_acceptance")
+        self.call("authorize", "--step", "2", "--user-quote", "开始第二步", succeeds=False)
+
+    def test_direct_agreement_rejects_ambiguous_or_empty_records(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        path = self.repo / "docs/ai-collab/demo/steps/01-step/preacceptance.md"
+        original = path.read_text()
+        invalid_records = [
+            original.replace("**当前约定**：界面显示汇总结果。", "**当前约定**： "),
+            original.replace("**证据**：步骤计划、实际 prompt、生效配置和本次运行日志。", "**证据**： "),
+            original + "\n- A. 另一个未确认的行为\n",
+            original + "\n- **当前约定选项**：A\n",
+        ]
+        for invalid in invalid_records:
+            with self.subTest(record=invalid):
+                path.write_text(invalid)
+                self.call("start-precheck", succeeds=False)
+        path.write_text(original)
+        self.call("start-precheck")
+
+    def test_optional_choice_does_not_assume_agreement_for_choice_items(self):
+        self.init_plan(steps=1)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "开始第一步")
+        self.prepare_docs(1, choices=("A",), two_options=True)
+        self.call("verified", "--result", "pass", "--evidence", "demo 结果已核对")
+        self.call("documented")
+        self.call("start-precheck")
+        self.call("answer-precheck", "--id", "Q1", "--user-answer", "我不确定",
+                  "--summary", "尚未决定", "--evidence", "demo 结果", succeeds=False)
+        self.assertEqual(self.read_state()["precheck"]["attempts"], [])
+
+    def test_statement_after_evidence_cannot_keep_confirmation_after_behavior_change(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        path = self.repo / "docs/ai-collab/demo/steps/01-step/preacceptance.md"
+        text = path.read_text().replace("- **当前约定**：界面显示汇总结果。\n", "")
+        path.write_text(text + "\n- **当前约定**：界面显示汇总结果。\n")
+        self.call("start-precheck")
+        self.call("answer-precheck", "--id", "Q1", "--user-answer", "显示汇总结果就行",
+                  "--summary", "确认显示方式", "--evidence", "demo 结果")
+        self.call("reset-precheck", "--user-quote", "改成仅显示完成提示")
+        path.write_text(path.read_text().replace("界面显示汇总结果。", "界面仅显示完成提示。"))
+        self.call("start-precheck")
+        self.assertEqual(self.read_state()["precheck"]["results"], {})
+        self.assertEqual(self.read_state()["phase"], "precheck")
+
+    def test_guard_allows_next_step_planning_without_code_authorization(self):
+        self.init_plan(steps=2)
+        self.call("configure-git", "--mode", "off")
+        def check(path):
+            return guard.check({"tool_name": "Write", "tool_input": {"file_path": str(self.repo / path)}}, self.repo)
+        self.assertIsNone(check("docs/ai-collab/demo/steps/01-step/plan.md"))
+        self.assertIsNotNone(check("src/one.py"))
+        self.call("authorize", "--step", "1", "--user-quote", "开始第一步")
+        self.prepare_docs(1)
+        self.call("verified", "--result", "pass", "--evidence", "demo 已验证")
+        self.call("documented")
+        self.pass_precheck()
+        self.call("accept", "--user-quote", "第一步符合预期")
+        self.assertIsNone(check("docs/ai-collab/demo/steps/02-step/plan.md"))
+        self.assertIsNotNone(check("docs/ai-collab/demo/steps/01-step/plan.md"))
+        self.assertIsNotNone(check("src/two.py"))
+
     def test_missing_rationale_blocks_plan_approval(self):
         self.call("init", "--slug", "demo", "--title", "示范", "--steps", "1")
         self.call("approve-plan", "--user-quote", "批准", succeeds=False)
@@ -220,7 +386,7 @@ class WorkflowTest(unittest.TestCase):
         self.call("accept", "--user-quote", "我懂了", succeeds=False)
         self.call("answer-precheck", "--id", "Q1", "--choice", "A", "--user-answer", "A", "--summary", "同意", "--evidence", "plan.md", succeeds=False)
         self.call("start-precheck")
-        self.call("answer-precheck", "--id", "Q2", "--choice", "B", "--user-answer", "B", "--summary", "同意", "--evidence", "plan.md", succeeds=False)
+        self.call("answer-precheck", "--id", "Q5", "--choice", "B", "--user-answer", "B", "--summary", "同意", "--evidence", "plan.md", succeeds=False)
         self.aligned_answer(1)
         self.call("accept", "--user-quote", "验收通过", succeeds=False)
         self.assertEqual(self.read_state()["precheck"]["results"]["Q1"]["result"], "aligned")

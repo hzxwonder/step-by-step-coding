@@ -4,11 +4,11 @@
 
 ## 生效范围
 - 匹配 Claude Code `Write|Edit|MultiEdit|NotebookEdit` 的编辑目标路径。
-- 规划阶段：只允许当前任务的 `plan.md` 文档；代码编辑拒绝。
+- 规划阶段：只允许当前任务的 `plan.md` 文档。等待首次授权或下一步授权时，可细化总计划与即将实施步骤的计划，代码仍不能修改。
 - 仅 `implementing` 阶段：允许改写当前步骤预先批准的文件，以及当前步骤自己的 `plan.md` / `verification.md` / `explain.md` / `preacceptance.md`。
-- `precheck_setup`：可以写本步讲解、验证、预验收题库，仍禁止写代码。
-- `precheck` 和 `precheck_discussion`：题库锁定，只能由状态 CLI 更新独立答题记录 `preacceptance-results.md`，不能边提问边更改已锁定选项或当前约定。
-- 待验收等阶段：只能改当前步骤讲解和验证文档；若需再改代码必须显式 `revise` 回 implementing 并验证受影响实现，并仅补充受影响内容的确认。
+- `precheck_setup`：可以写本步讲解、验证、预验收约定清单，仍禁止写代码。
+- `precheck` 和 `precheck_discussion`：约定清单锁定，只能由状态 CLI 更新独立确认记录 `preacceptance-results.md`，不能边提问边更改已锁定选项或当前约定。
+- 待验收等阶段：可补充讲解。改变计划、验证或获批文件时，须按当前授权 `revise` 并重新核对证据。讲解文字不参与实现指纹，仅补充讲解不会撤销确认。
 - 下一个步骤及计划外代码永远拒绝，除非用户明确批准计划范围调整，更新允许文件名单。
 - 工作流状态 `.ai-collab/**/state.json` 只通过 CLI 更新；钩子不允许普通编辑工具篡改。
 
@@ -46,4 +46,4 @@
 - 授权第 1 步后尝试写获批文件：应允许。
 - 授权第 1 步后尝试写第 2 步文件：应被拒绝。
 - 将第 1 步标记已验证后尝试修改源码：应被拒绝，需重新开放当前步骤修订。
-- 启动 `start-precheck` 后尝试编辑 `preacceptance.md`：应被拒绝；如题目有歧义，先 `reset-precheck`。
+- 启动 `start-precheck` 后尝试编辑 `preacceptance.md`：应被拒绝；如约定有歧义，先 `reset-precheck`。
