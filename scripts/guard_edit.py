@@ -52,14 +52,15 @@ def check(payload, repo):
     base_dir = f"docs/ai-collab/{slug}/"
     step_prefix = base_dir + f"steps/{int(state['current_step']):02d}-step/"
     phase = state["phase"]
+    design_paths = {base_dir + name for name in ("plan.md", "mvp-design.md", "technical-plan.md", "prototype.html")}
     if phase == "planning":
-        if relative == base_dir + "plan.md" or (relative.startswith(base_dir + "steps/") and relative.endswith("/plan.md")):
+        if relative in design_paths or (relative.startswith(base_dir + "steps/") and relative.endswith("/plan.md")):
             return None
-        return "规划阶段只能编写当前任务的 plan.md，不得编写业务代码"
+        return "设计阶段可编写当前任务的设计、技术方案、计划与 HTML 原型；业务实现须先获授权"
     if phase in ("await_git_preference", "await_step_authorization", "await_next_step"):
         planned_step = int(state["current_step"]) + 1 if phase == "await_next_step" else 1
         next_plan = base_dir + f"steps/{planned_step:02d}-step/plan.md"
-        if relative in {base_dir + "plan.md", next_plan}:
+        if relative in design_paths | {next_plan}:
             return None
     if phase == "implementing":
         allowed = set(state.get("allowed_paths", {}).get(str(state["current_step"]), []))

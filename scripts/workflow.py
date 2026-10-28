@@ -95,6 +95,8 @@ def cmd_init(repo, a):
     if count != 1:
         fail("总计划模板中的步骤表格式不符合预期")
     (base / "plan.md").write_text(master_text, encoding="utf-8")
+    for name in ("mvp-design.md", "technical-plan.md"):
+        (base / name).write_text(template_file(name, {"TASK_TITLE": a.title}), encoding="utf-8")
     for n in range(1, a.steps + 1):
         folder = step_folder(repo, {"slug": a.slug}, n)
         folder.mkdir(parents=True)
@@ -108,7 +110,7 @@ def cmd_init(repo, a):
     active_file(repo).parent.mkdir(parents=True, exist_ok=True)
     active_file(repo).write_text(json.dumps({"slug": a.slug}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     save(repo, state, "初始化计划文件（尚无代码授权）")
-    print(f"已生成总 plan.md 和 {a.steps} 个子 plan.md；目前仅能规划。")
+    print(f"已生成 MVP 设计、技术方案、总计划和 {a.steps} 个步骤计划；目前可设计与制作产品 HTML 原型。")
 
 
 def need(state, *phases):
@@ -155,6 +157,25 @@ def substantial_reason(value):
     return True
 
 
+def plan_field(text, name):
+    matches = re.findall(r"(?m)^-\s+\*\*" + re.escape(name) + r"\*\*：([^\n]*)$", text)
+    return matches[0].strip() if len(matches) == 1 else ""
+
+
+def validate_mvp_design(repo, state):
+    base = project_dir(repo, state["slug"])
+    for name, field in (("mvp-design.md", "核心闭环"), ("technical-plan.md", "采用方案")):
+        path = base / name
+        if not path.is_file() or not substantial_reason(plan_field(path.read_text(encoding="utf-8"), field)):
+            fail(f"请先讨论并完善 {name} 的‘{field}’，向用户展示后再记录批准")
+    text = (base / "plan.md").read_text(encoding="utf-8")
+    milestone = plan_field(text, "首次可用步骤")
+    if not re.fullmatch(r"[0-9]{1,2}", milestone) or not 1 <= int(milestone) <= state["total_steps"]:
+        fail("总计划须填写有效的‘首次可用步骤’编号，通常为 01")
+    if int(milestone) > 1 and not substantial_reason(plan_field(text, "必要准备")):
+        fail("首次可用步骤晚于 01 时，须说明实际阻碍与最短准备路径")
+
+
 def validate_plan_reasons(repo, state, step=None):
     master = project_dir(repo, state["slug"]) / "plan.md"
     if not master.is_file():
@@ -176,9 +197,11 @@ def validate_plan_reasons(repo, state, step=None):
         detail = step_folder(repo, state, n) / "plan.md"
         if not detail.is_file():
             fail(f"步骤 {n:02d} 的 plan.md 缺失")
-        missing = missing_reasoning(detail.read_text(encoding="utf-8"), n)
-        if missing:
-            fail(f"步骤 {n:02d} 的 plan.md 未说明必要性/全局作用：" + "; ".join(missing) + "；请先与用户讨论并补完")
+        # 初次批准只细化第一步；后续步骤在各自授权前细化。
+        if step is not None or n == 1:
+            missing = missing_reasoning(detail.read_text(encoding="utf-8"), n)
+            if missing:
+                fail(f"步骤 {n:02d} 的 plan.md 未说明必要性/全局作用：" + "; ".join(missing) + "；请先补齐，有核心未决项时再讨论")
 
 
 def cmd_approve_plan(repo, state, a):
@@ -187,10 +210,11 @@ def cmd_approve_plan(repo, state, a):
     if any(not p.is_file() for p in plans):
         fail("每一步都必须有独立 plan.md")
     validate_plan_reasons(repo, state)
+    validate_mvp_design(repo, state)
     if not a.user_quote.strip():
         fail("必须记录用户明确批准计划的原话")
     state["phase"] = "await_git_preference"
-    save(repo, state, "用户批准全局及各步骤计划：" + a.user_quote)
+    save(repo, state, "用户认可 MVP 设计、技术方案、总路线及当前步计划：" + a.user_quote)
     print("计划已批准。沿用已知保存偏好，默认 configure-git --mode off。")
 
 
@@ -630,9 +654,9 @@ def parser():
     p = argparse.ArgumentParser(description="Step-by-Step Coding 人工授权状态机（不会执行代码 push）")
     p.add_argument("--repo", default=".", help="目标项目根目录")
     sub = p.add_subparsers(dest="command", required=True)
-    x = sub.add_parser("init", help="初始化总计划和每一步 plan.md")
+    x = sub.add_parser("init", help="初始化 MVP 设计、技术方案、总路线与步骤计划")
     x.add_argument("--slug", required=True); x.add_argument("--title", required=True); x.add_argument("--steps", type=int, required=True)
-    x = sub.add_parser("approve-plan", help="记录用户确认了总计划及子计划")
+    x = sub.add_parser("approve-plan", help="记录用户认可已展示的 MVP 设计、技术方案、总路线及当前步计划")
     x.add_argument("--user-quote", required=True)
     x = sub.add_parser("allow-path", help="登记指定步骤获批的精确代码路径")
     x.add_argument("--step", type=int, required=True); x.add_argument("--path", required=True)

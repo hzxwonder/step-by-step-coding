@@ -4,7 +4,7 @@
 
 ## 生效范围
 - 匹配 Claude Code `Write|Edit|MultiEdit|NotebookEdit` 的编辑目标路径。
-- 规划阶段：只允许当前任务的 `plan.md` 文档。等待首次授权或下一步授权时，可细化总计划与即将实施步骤的计划，代码仍不能修改。
+- 设计阶段：允许当前任务的 `mvp-design.md`、`technical-plan.md`、`prototype.html` 与计划文档。原型用于展示体验，业务实现仍需授权。等待首次或下一步授权时，可更新这些设计产物与即将实施步骤的计划。
 - 仅 `implementing` 阶段：允许改写当前步骤预先批准的文件，以及当前步骤自己的 `plan.md` / `verification.md` / `explain.md` / `preacceptance.md`。
 - `precheck_setup`：可以写本步讲解、验证、预验收约定清单，仍禁止写代码。
 - `precheck` 和 `precheck_discussion`：约定清单锁定，只能由状态 CLI 更新独立确认记录 `preacceptance-results.md`，不能边提问边更改已锁定选项或当前约定。
@@ -43,6 +43,7 @@
 ## 快速验证
 
 - 在规划阶段尝试用 `Write` 写 `src/forbidden.ts`：应被拒绝。
+- 在规划阶段写当前任务的 `prototype.html`：应允许；写项目正式入口 `src/app.html`：应被拒绝。
 - 授权第 1 步后尝试写获批文件：应允许。
 - 授权第 1 步后尝试写第 2 步文件：应被拒绝。
 - 将第 1 步标记已验证后尝试修改源码：应被拒绝，需重新开放当前步骤修订。

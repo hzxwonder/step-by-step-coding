@@ -19,6 +19,9 @@ This README explains installation and use in English.
 ## What the skill does
 
 - Ask one question at a time, with a concrete example when useful.
+- Discuss MVP features and scope first. Return the updated short design after each design discussion.
+- Provide an editable HTML prototype for product design. Research and discuss the stack, then write the technical plan.
+- Start implementation after design approval and permission to begin. Deliver the core flow early, then improve it incrementally.
 - Emphasize key decisions in bold. Explain necessary terms before you use them.
 - Explain why each planned step is necessary.
 - Get approval for the overall route and the current step details.
@@ -112,7 +115,8 @@ $step-by-step-coding 帮我做一个本地记账工具。我是初学者。
 
 In Claude Code, replace `$step-by-step-coding` with `/step-by-step-coding`.
 
-The agent drafts plans from your goal and asks only about key gaps. You approve the route before implementation.
+After each design discussion, the agent returns the current MVP design. The technical plan and product prototype help you decide.
+One explicit reply can approve the designs and route, and authorize the first step. Later steps need only outlines until implementation approaches.
 Files stay local by default. If you request remote backups, the agent confirms only the missing destination and branch details.
 If you choose a push, confirm the repository and branch.
 
@@ -121,7 +125,7 @@ Use these messages as the task proceeds:
 | Your message | What it authorizes |
 |---|---|
 | `确认需求，生成计划` | Create the main plan and the step plans. |
-| `认可总计划及各步骤计划` | Approve the proposed plans. |
+| `认可刚展示的 MVP 设计、技术方案和计划` | Approve the displayed designs and plans. Implementation still needs permission to start. |
 | `开始第 1 步` | Implement the first step under the approved plan. |
 | `解释一下这段代码` | Explain the current implementation. |
 | `开始预验收` | Check key agreements. Ask only about unresolved decisions. |
@@ -142,6 +146,9 @@ The agent creates these files in the project that you develop:
 ```text
 docs/ai-collab/<task>/
 ├── plan.md
+├── mvp-design.md
+├── technical-plan.md
+├── prototype.html  # For product design
 └── steps/01-step/
     ├── plan.md
     ├── verification.md
@@ -153,7 +160,8 @@ docs/ai-collab/<task>/
 .ai-collab/active.json
 ```
 
-`plan.md` defines scope and purpose. `verification.md` records actual test results.
+`mvp-design.md` defines the main features and scope choices. `technical-plan.md` records the stack, reasons, and runtime approach.
+`plan.md` defines the first usable milestone and later steps. `verification.md` records actual test results.
 `explain.md` explains the result and implementation. `preacceptance.md` records key agreements and evidence.
 The results file records your answers. The `.ai-collab` files record workflow state.
 
@@ -190,6 +198,9 @@ The agent must run each test and record the actual evidence.
 
 Confirmation records require a source type, message reference, and scope. Authorization and agent choices cannot count as requirement confirmation.
 Acceptance also requires a recorded real-case presentation and an evidence file. The agent must check the meaning of the reply and the actual execution evidence.
+
+Plan approval checks the core MVP flow, technical proposal, and first usable milestone. Later steps need detail before their own authorization.
+The helper checks basic structure. The agent must check feature choices, design approval, and the product prototype against the actual conversation.
 
 The optional [Claude Code hook example](references/guard-setup.md) restricts selected edit tools.
 It does not cover shell commands or all other tools. It is not an operating system sandbox.

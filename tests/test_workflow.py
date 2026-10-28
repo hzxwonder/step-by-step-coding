@@ -65,7 +65,15 @@ class WorkflowTest(unittest.TestCase):
             lines.append(line)
         for n in range(1, steps + 1):
             lines.append(f"| {n:02d} | 形成第{n}步核心能力 | 当前用户缺少第{n}步能力，无法完成完整业务流程 | 本步为项目提供可被下一阶段复用的功能和接口 | 能独立调用接口并观察输出 | 连接前后步骤 | 未授权 |")
-        master.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        content = re.sub(r"(?m)^- \*\*首次可用步骤\*\*：.*$", "- **首次可用步骤**：01", "\n".join(lines) + "\n")
+        master.write_text(content, encoding="utf-8")
+        base = master.parent
+        (base / "mvp-design.md").write_text(
+            "# MVP 设计\n- **核心闭环**：用户从入口调用 feature()，看到 ready 结果并保存运行记录。\n"
+            "主要功能：调用入口、展示结果。仅支持已约定的演示输入。\n", encoding="utf-8")
+        (base / "technical-plan.md").write_text(
+            "# 技术方案\n- **采用方案**：使用现有 Python 环境和标准库，以命令行输出并保存 JSON 记录。\n"
+            "理由：本项目无需界面或外部服务，现有环境已经可用。\n", encoding="utf-8")
         for n in range(1, steps + 1):
             p = self.repo / "docs" / "ai-collab" / "demo" / "steps" / f"{n:02d}-step" / "plan.md"
             text = p.read_text(encoding="utf-8")
@@ -87,7 +95,7 @@ class WorkflowTest(unittest.TestCase):
         self.fill_plan_rationale(steps)
         self.call("allow-path", "--step", "1", "--path", "src/one.py")
         self.call("allow-path", "--step", "2", "--path", "src/two.py") if steps > 1 else None
-        self.call("approve-plan", "--user-quote", "我认可两个计划")
+        self.call("approve-plan", "--user-quote", "认可刚展示的 MVP 设计、技术方案、路线和第一步计划")
 
     def prepare_docs(self, step, choices=("A", "B", "C", "A"), two_options=False):
         folder = self.repo / "docs" / "ai-collab" / "demo" / "steps" / f"{step:02d}-step"
@@ -449,6 +457,80 @@ class WorkflowTest(unittest.TestCase):
         master = self.repo / "docs/ai-collab/demo/plan.md"
         master.write_text(master.read_text().replace("本步为项目提供可被下一阶段复用的功能和接口", "待讨论"))
         self.call("approve-plan", "--user-quote", "我批准", succeeds=False)
+
+    def test_design_and_technical_proposal_required_before_approval(self):
+        self.call("init", "--slug", "demo", "--title", "示范", "--steps", "1")
+        self.fill_plan_rationale(1)
+        base = self.repo / "docs/ai-collab/demo"
+        for name in ("mvp-design.md", "technical-plan.md"):
+            path = base / name
+            valid_text = path.read_text()
+            for invalid_text in ("", (SKILL / "assets" / name).read_text()):
+                path.write_text(invalid_text)
+                self.call("approve-plan", "--user-quote", "认可已展示的设计和方案", succeeds=False)
+                self.assertEqual(self.read_state()["phase"], "planning")
+            path.unlink()
+            self.call("approve-plan", "--user-quote", "认可", succeeds=False)
+            path.write_text(valid_text)
+        self.call("approve-plan", "--user-quote", "认可已展示的设计和方案")
+        self.assertEqual(self.read_state()["accepted_steps"], [])
+
+    def test_first_usable_step_must_be_in_route(self):
+        self.call("init", "--slug", "demo", "--title", "示范", "--steps", "2")
+        self.fill_plan_rationale(2)
+        master = self.repo / "docs/ai-collab/demo/plan.md"
+        valid_text = master.read_text()
+        for milestone in ("", "00", "03", "以后决定"):
+            master.write_text(valid_text.replace("**首次可用步骤**：01", "**首次可用步骤**：" + milestone))
+            self.call("approve-plan", "--user-quote", "认可", succeeds=False)
+        master.write_text(valid_text)
+        self.call("approve-plan", "--user-quote", "认可第一步跑通的设计与计划")
+
+    def test_later_mvp_requires_concrete_preparation(self):
+        self.call("init", "--slug", "demo", "--title", "示范", "--steps", "2")
+        self.fill_plan_rationale(2)
+        master = self.repo / "docs/ai-collab/demo/plan.md"
+        text = master.read_text().replace("**首次可用步骤**：01", "**首次可用步骤**：02")
+        master.write_text(text)
+        self.call("approve-plan", "--user-quote", "认可", succeeds=False)
+        master.write_text(re.sub(r"(?m)^- \*\*必要准备\*\*：.*$",
+                                "- **必要准备**：需先在设备上安装已确认的运行时，随后在第二步完成真实设备输入与结果展示。", text))
+        self.call("approve-plan", "--user-quote", "认可先准备设备再跑通的设计与计划")
+
+    def test_future_details_can_wait_until_their_authorization(self):
+        self.call("init", "--slug", "demo", "--title", "示范", "--steps", "2")
+        self.fill_plan_rationale(2)
+        self.call("allow-path", "--step", "1", "--path", "src/one.py")
+        self.call("allow-path", "--step", "2", "--path", "src/two.py")
+        future = self.repo / "docs/ai-collab/demo/steps/02-step/plan.md"
+        future.write_text((SKILL / "assets/step-plan.md").read_text())
+        self.call("approve-plan", "--user-quote", "认可 MVP 和后续概要，第二步实施前细化")
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "开始 MVP")
+        self.prepare_docs(1)
+        self.call("verified", "--result", "pass", "--evidence", "真实示例已运行")
+        self.call("documented")
+        self.pass_precheck()
+        self.call("accept", "--user-quote", "这个版本符合预期")
+        self.call("authorize", "--step", "2", "--user-quote", "开始第二步", succeeds=False)
+        self.fill_plan_rationale(2)
+        self.call("authorize", "--step", "2", "--user-quote", "认可细化内容并开始第二步")
+
+    def test_design_guard_allows_scoped_prototype_before_implementation(self):
+        self.call("init", "--slug", "demo", "--title", "示范", "--steps", "1")
+        def check(path):
+            return guard.check({"tool_name": "Write", "tool_input": {"file_path": str(self.repo / path)}}, self.repo)
+        for name in ("mvp-design.md", "technical-plan.md", "prototype.html"):
+            self.assertIsNone(check("docs/ai-collab/demo/" + name))
+            self.assertIsNotNone(check("docs/ai-collab/other/" + name))
+        self.assertIsNotNone(check("src/app.html"))
+        self.assertIsNotNone(check("package.json"))
+        self.assertIsNotNone(check("docs/ai-collab/demo/backend.py"))
+        self.fill_plan_rationale(1)
+        self.call("approve-plan", "--user-quote", "认可设计和计划")
+        self.call("configure-git", "--mode", "off")
+        self.assertIsNone(check("docs/ai-collab/demo/prototype.html"))
+        self.assertIsNotNone(check("src/app.html"))
 
     def test_rationale_must_remain_valid_before_authorize(self):
         self.init_plan(steps=1)
