@@ -315,11 +315,13 @@ def file_digest(path):
 
 
 def collect_source_hashes(repo, state):
-    """记录约定、验证与获批文件，讲解文档只检查存在。"""
+    """记录设计、约定、验证与获批文件，讲解文档只检查存在。"""
     folder = current_folder(repo, state)
+    base = project_dir(repo, state["slug"])
     required = [folder / f for f in ("plan.md", "verification.md", "explain.md")]
-    required.append(project_dir(repo, state["slug"]) / "plan.md")
+    required.append(base / "plan.md")
     optional = [repo / item for item in state["allowed_paths"][str(state["current_step"])]]
+    optional += [base / name for name in ("mvp-design.md", "technical-plan.md", "prototype.html")]
     result = {}
     for file in required + optional:
         if file.name.startswith("preacceptance-results"):
@@ -328,7 +330,7 @@ def collect_source_hashes(repo, state):
         if not file.exists():
             if file in required:
                 fail(f"预验收必备文档缺失：{file}")
-            # 获批修改的文件可以最终无需创建；记录不存在状态以检测后续新建
+            # 可选原型、旧任务的设计文件或获批文件可能不存在，记录状态以检测新建。
             result[relative] = "<missing>"
             continue
         if not file.is_file():
@@ -344,7 +346,7 @@ def assert_source_unchanged(repo, state):
     explanation = (current_folder(repo, state) / "explain.md").relative_to(repo).as_posix()
     previous = {path: digest for path, digest in previous.items() if path != explanation}
     if not previous or previous != collect_source_hashes(repo, state):
-        fail("本步计划、验证或获批文件已变化。请按当前授权 revise，重新核对证据并保留未变化的确认。")
+        fail("设计、计划、验证或获批文件已变化。请按当前授权 revise，核对受影响证据，沿用仍适用的确认。")
 
 
 def write_precheck_results(repo, state):

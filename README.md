@@ -7,32 +7,22 @@
 The agent investigates, recommends, implements, and verifies.
 You decide key behavior, accept each result, and authorize the next step. Read code explanations when you need them.
 
-For each step, the agent presents the result, evidence, and key implementation details. Read code explanations when you need them.
-You decide whether to revise the work, accept the step, or continue.
-
-This skill helps an AI coding agent discuss requirements, write plans, implement one step, test the result, and explain the code.
-You decide when each step starts and when it is complete.
+You can check overall progress or inspect interface behavior, prompts, configuration, and output details.
+Short explanations support your current decision. Detailed evidence stays in the project documents.
 
 The skill instructions, templates, and teaching documents use Simplified Chinese.
 This README explains installation and use in English.
 
 ## What the skill does
 
-- Ask one question at a time, with a concrete example when useful.
-- Discuss MVP features and scope first. Return the updated short design after each design discussion.
-- Provide an editable HTML prototype for product design. Research and discuss the stack, then write the technical plan.
-- Start implementation after design approval and permission to begin. Deliver the core flow early, then improve it incrementally.
-- Emphasize key decisions in bold. Explain necessary terms before you use them.
-- Explain why each planned step is necessary.
-- Get approval for the overall route and the current step details.
-- Implement only the step that you authorize.
-- Test the result and explain the actual code.
-- Compare the implemented behavior with your expectations.
-- Resolve core decisions about the solution, success criteria, scope, and major costs before presentation preferences.
-- Record each confirmation's source and scope. Record permission to start separately.
-- Show a real case with key implementation details, logs, output, and reasoning before acceptance.
-- Retain confirmed behavior when it does not change.
-- Commit and push accepted work only under your chosen Git policy.
+- Discuss one core decision at a time, using examples to explain its effect on results, scope, or costs.
+- Return the short MVP design after each design discussion. Provide a product HTML prototype and a technical plan.
+- Deliver the core flow early after design approval and permission to begin. Improve the usable version with later steps.
+- Explain overall progress, usable results, and the next outcome at each delivery.
+- Connect key agreements to checks and real evidence. Select tests or actual operations to match the change.
+- Use business terms, direct code, and explanations when needed.
+- Record confirmation sources and scope. Retain applicable decisions, and record authorization and acceptance separately.
+- Show a current real case before acceptance. Save results under the agreed Git policy.
 
 The behavior questions confirm the required behavior. They do not test your knowledge of code or terminology.
 After a change, the agent tests the affected implementation and confirms only new, changed, or unresolved behavior.
@@ -202,6 +192,9 @@ Acceptance also requires a recorded real-case presentation and an evidence file.
 Plan approval checks the core MVP flow, technical proposal, and first usable milestone. Later steps need detail before their own authorization.
 The helper checks basic structure. The agent must check feature choices, design approval, and the product prototype against the actual conversation.
 
+Acceptance checks include the MVP design, technical plan, and HTML prototype. They detect edits, creation, and deletion.
+After changes, review affected evidence and retain applicable confirmations. See the [behavior verification guide](references/behavior-verification.md).
+
 The optional [Claude Code hook example](references/guard-setup.md) restricts selected edit tools.
 It does not cover shell commands or all other tools. It is not an operating system sandbox.
 Keep the coding agent's permission controls active.
@@ -215,7 +208,7 @@ python3 -m unittest discover -s tests -v
 python3 scripts/workflow.py --help
 ```
 
-The suite covers authorization boundaries, recorded answers, partial revisions, source changes, and Git records.
+The suite covers authorization boundaries, confirmations, design and source changes, partial revisions, and Git records.
 It also tests the edit guard's path decisions.
 The release tests include a macOS run. The GitHub workflow runs the suite on Ubuntu with Python 3.11.
 Live Claude Code hook integration and Windows execution need separate validation.

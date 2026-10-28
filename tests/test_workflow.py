@@ -741,6 +741,78 @@ class WorkflowTest(unittest.TestCase):
         self.call("revise", "--user-quote", "代码有修改需要重新验证")
         self.assertEqual(self.read_state()["phase"], "implementing")
 
+    def test_changed_design_versions_block_acceptance(self):
+        self.prepare_direct_precheck()
+        base = self.repo / "docs/ai-collab/demo"
+        (base / "prototype.html").write_text("<button>保存记录</button>")
+        self.call("documented")
+        self.start_precheck()
+        self.confirm("--id", "Q1", "--user-answer", "显示汇总结果",
+                     "--summary", "结果符合已有要求", "--evidence", "demo 真实输出")
+        for name in ("mvp-design.md", "technical-plan.md", "prototype.html"):
+            with self.subTest(design=name):
+                path = base / name
+                original = path.read_text()
+                path.write_text(original + "\n改变本轮保存和显示行为\n")
+                self.call("accept", "--user-quote", "验收当前版本", succeeds=False)
+                self.present_case(succeeds=False)
+                path.write_text(original)
+        self.call("accept", "--user-quote", "已展示的版本符合预期")
+
+    def test_design_creation_and_deletion_change_case_version(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        self.start_precheck()
+        self.confirm("--id", "Q1", "--user-answer", "显示汇总结果",
+                     "--summary", "沿用明确要求", "--evidence", "demo 真实输出")
+        base = self.repo / "docs/ai-collab/demo"
+        prototype = base / "prototype.html"
+        prototype.write_text("<button>新操作</button>")
+        self.call("accept", "--user-quote", "验收", succeeds=False)
+        prototype.unlink()
+        for name in ("mvp-design.md", "technical-plan.md"):
+            path = base / name
+            original = path.read_bytes()
+            path.unlink()
+            self.call("accept", "--user-quote", "验收", succeeds=False)
+            path.write_bytes(original)
+        self.call("accept", "--user-quote", "原版本符合预期")
+
+    def test_design_revision_keeps_unaffected_agreements(self):
+        self.prepare_direct_precheck(count=2)
+        self.call("documented")
+        self.start_precheck()
+        for qid in ("Q1", "Q2"):
+            self.confirm("--id", qid, "--user-answer", "认可已展示的约定",
+                         "--summary", "本项符合明确要求", "--evidence", "demo 真实输出")
+        self.call("revise", "--user-quote", "修改汇总结果的呈现，金额规则保持原约定", "--affected", "Q1")
+        base = self.repo / "docs/ai-collab/demo"
+        design = base / "mvp-design.md"
+        design.write_text(design.read_text() + "\n汇总结果同时显示记录数。\n")
+        agreements = base / "steps/01-step/preacceptance.md"
+        agreements.write_text(agreements.read_text().replace("**当前约定**：界面显示汇总结果。",
+                                                            "**当前约定**：界面显示汇总结果与记录数。"))
+        self.call("verified", "--result", "pass", "--evidence", "按当前授权核对结果与记录数")
+        self.call("documented")
+        self.call("start-precheck")
+        precheck = self.read_state()["precheck"]
+        self.assertEqual(set(precheck["results"]), {"Q2"})
+        self.assertNotIn("case_presentation", precheck)
+        self.confirm("--id", "Q1", "--user-answer", "增加记录数符合我的要求",
+                     "--summary", "沿用本次变更要求", "--evidence", "当前结果展示")
+        self.call("accept", "--user-quote", "验收", succeeds=False)
+        self.present_case()
+        self.call("accept", "--user-quote", "当前结果符合预期")
+
+    def test_unrelated_notes_do_not_invalidate_design_evidence(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        self.start_precheck()
+        self.confirm("--id", "Q1", "--user-answer", "显示汇总结果",
+                     "--summary", "符合要求", "--evidence", "demo 真实输出")
+        (self.repo / "notes.md").write_text("下一轮可能讨论的事项，不改变当前设计。\n")
+        self.call("accept", "--user-quote", "当前结果符合预期")
+
 
 
     def test_revision_before_question_setup(self):

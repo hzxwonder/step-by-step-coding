@@ -11,6 +11,8 @@
 | [Martin Fowler：YAGNI](https://martinfowler.com/bliki/Yagni.html)，原则阐释 | 当前不需要的能力，不因未来猜测提前实现 | 完成当前获批能力。已有明确需求和必要保护仍须完成 |
 | [OWASP Input Validation Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Input_Validation_Cheat_Sheet.html)，安全指南 | 对不可信输入做语法和语义验证 | 在实际输入边界检查格式和业务规则。内部接口若跨信任边界，也须验证 |
 | [Digital.gov Plain Language](https://digital.gov/guides/plain-language)，写作指南 | 根据读者需要组织内容，并检查表达是否易懂 | 先给结果和操作入口。用具体例子帮助用户作决定 |
+| [用 SDD + TDD 驯服 AI](https://gitcode.csdn.net/6a20239e10ee7a33f2773f06.html)，实践文章 | 用可审查的规格、测试与实际案例核对行为 | 关键约定连接检查和真实证据，结合当前 MVP 范围采用 |
+| [Martin Fowler：Test Driven Development](https://martinfowler.com/bliki/TestDrivenDevelopment.html)，方法说明 | 从候选用例中选一项，逐次完成测试、实现与整理 | 核心逻辑与缺陷修复使用最小行为循环，其他改动按验证收益选择方式 |
 
 `clear-communication.md` 采用 ASD-STE100 的结构原则。规则包括单句单意、主动表达、统一用词和保留事实强度。英文保留相应长度约束。中文按句意拆分，不套用英文词数。官方标准背景可见 [ASD-STE100](https://www.asd-ste100.org/)。
 

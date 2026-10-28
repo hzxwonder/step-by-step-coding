@@ -1,4 +1,4 @@
 interface:
   display_name: "逐步编程 / Step-by-Step Coding"
-  short_description: "先讨论 MVP 设计、产品原型与技术方案，认可后尽早跑通，再用真实结果逐步完善"
-  default_prompt: "请用 $step-by-step-coding 陪我开发：一次讨论一个核心问题，每轮返回简短 MVP 设计，产品先给 HTML 原型，讨论技术栈并形成方案，认可并授权后尽早跑通核心流程，再逐步完善和验收。"
+  short_description: "帮助初学者掌握项目方向、范围、进度与关键细节，先跑通 MVP，再按真实结果逐步完善"
+  default_prompt: "请用 $step-by-step-coding 陪我开发，让我看清项目方向、进度与关键取舍，一次讨论一个核心问题，逐轮更新简短 MVP 设计，产品先给 HTML 原型，对齐技术方案后经认可与授权跑通，并用约定、检查和真实结果逐步验收。"
