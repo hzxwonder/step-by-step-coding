@@ -25,6 +25,9 @@ This README explains installation and use in English.
 - Implement only the step that you authorize.
 - Test the result and explain the actual code.
 - Compare the implemented behavior with your expectations.
+- Resolve core decisions about the solution, success criteria, scope, and major costs before presentation preferences.
+- Record each confirmation's source and scope. Record permission to start separately.
+- Show a real case with key implementation details, logs, output, and reasoning before acceptance.
 - Retain confirmed behavior when it does not change.
 - Commit and push accepted work only under your chosen Git policy.
 
@@ -184,6 +187,9 @@ python3 scripts/workflow.py --repo /path/to/your-project status
 `status` requires an initialized task. Ask the agent to initialize the workflow when you approve the planning work.
 The helper does not execute implementation tests, judge your answers, or push commits.
 The agent must run each test and record the actual evidence.
+
+Confirmation records require a source type, message reference, and scope. Authorization and agent choices cannot count as requirement confirmation.
+Acceptance also requires a recorded real-case presentation and an evidence file. The agent must check the meaning of the reply and the actual execution evidence.
 
 The optional [Claude Code hook example](references/guard-setup.md) restricts selected edit tools.
 It does not cover shell commands or all other tools. It is not an operating system sandbox.

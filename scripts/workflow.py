@@ -13,6 +13,7 @@ from pathlib import Path
 SKILL_ROOT = Path(__file__).resolve().parent.parent
 VALID_SLUG = re.compile(r"^[a-z0-9][a-z0-9-]{0,62}$")
 PRECHECK_SCHEMA = "alignment-mcq-v2"
+CONFIRMATION_SOURCES = ("requirement", "delegation", "approved-plan")
 
 
 def fail(message):
@@ -335,12 +336,17 @@ def write_precheck_results(repo, state):
                   f"- 用户选择：**{rec['choice']}**",
                   f"- 当前方案：**{rec['baseline']}**",
                   f"- 用户原话：{rec['user_answer']}",
+                  f"- 确认来源：{rec.get('source_kind', '待补充')} · {rec.get('source_ref', '待补充')}",
+                  f"- 适用范围：{rec.get('scope', '待补充')}",
                   f"- 对齐说明：{rec['summary']}",
                   f"- 需求/代码证据：{rec['evidence']}", ""]
     passed = len(pre.get("results", {}))
     lines += ["## 当前对齐状态", "", f"- 已对齐：{passed} / {len(pre['questions'])}",
               f"- 待确认：{', '.join(q for q in pre['questions'] if q not in pre['results']) or '无'}", "",
               "约定对齐后按用户明确表述记录验收。已有验收原话无需重问，下一步仍需明确授权。", ""]
+    case = pre.get("case_presentation")
+    lines += ["## 真实 case 展示", "",
+              f"- {case['case_id']}：{case['presentation_ref']}；证据：{case['evidence']}" if case else "- 待登记当前版本的真实 case 展示", ""]
     path = current_folder(repo, state) / "preacceptance-results.md"
     path.write_text("\n".join(lines), encoding="utf-8")
 
@@ -389,6 +395,30 @@ def validate_question_file(path):
     return questions, baseline_map, option_map
 
 
+def decision_levels(path):
+    blocks = re.split(r"(?m)(?=^### Q[1-9][0-9]*\s)", path.read_text(encoding="utf-8"))[1:]
+    levels = {}
+    for block in blocks:
+        qid = re.match(r"### (Q[1-9][0-9]*)", block).group(1)
+        level = re.findall(r"(?m)^- \*\*决策层级\*\*：(核心|体验)\s*$", block)
+        impact = re.findall(r"(?m)^- \*\*选择影响\*\*：([^\n]+)$", block)
+        if len(level) != 1 or len(impact) != 1 or not impact[0].strip():
+            fail(f"{qid} 请写明决策层级与选择影响，先识别核心未决项")
+        levels[qid] = level[0]
+    return levels
+
+
+def pending_questions(pre):
+    pending = [q for q in pre["questions"] if q not in pre["results"]]
+    return sorted(pending, key=lambda q: pre.get("levels", {}).get(q) != "核心")
+
+
+def has_confirmation_source(record):
+    return (record.get("source_kind") in CONFIRMATION_SOURCES
+            and bool(record.get("source_ref", "").strip())
+            and bool(record.get("scope", "").strip()))
+
+
 def question_hashes(path):
     """逐项比较行为约定；证据与讨论说明更新不撤销用户选择。"""
     content = path.read_text(encoding="utf-8")
@@ -419,24 +449,28 @@ def cmd_start_precheck(repo, state, a):
     need(state, "precheck_setup")
     path = precheck_file(repo, state)
     questions, baselines, options = validate_question_file(path)
+    levels = decision_levels(path)
     hashes = question_hashes(path)
     previous = state.get("precheck") or empty_precheck()
     old_hashes = previous.get("question_hashes", {})
     same_file = previous.get("file_hash") == file_digest(path)
     retained = {q: record for q, record in previous["results"].items()
-                if q in questions and record.get("result") == "aligned"
+                if q in questions and record.get("result") == "aligned" and has_confirmation_source(record)
                 and record.get("choice") == baselines[q]
                 and (old_hashes.get(q) == hashes[q] or (not old_hashes and same_file))}
     state["precheck"] = {"schema": PRECHECK_SCHEMA, "questions": questions, "baselines": baselines,
-                         "options": options,
+                         "options": options, "levels": levels,
                          "results": retained, "attempts": previous["attempts"],
                          "question_hashes": hashes, "file_hash": file_digest(path),
                          "source_hashes": collect_source_hashes(repo, state)}
-    pending = [q for q in questions if q not in retained]
+    if (previous.get("case_presentation") and old_hashes == hashes
+            and previous.get("source_hashes") == state["precheck"]["source_hashes"]):
+        state["precheck"]["case_presentation"] = previous["case_presentation"]
+    pending = pending_questions(state["precheck"])
     state["phase"] = "precheck" if pending else "await_acceptance"
     write_precheck_results(repo, state)
     save(repo, state, f"当前约定已锁定；保留 {len(retained)} 项确认，待确认 {len(pending)} 项")
-    print(f"为 {pending[0]} 引用已有原话或解决待定项。" if pending else "已有确认均适用，可登记当前步骤验收。")
+    print(f"为 {pending[0]} 引用已有原话或解决待定项。" if pending else "已有确认均适用。核对真实 case 展示记录后登记验收。")
 
 
 def cmd_answer_precheck(repo, state, a):
@@ -454,15 +488,18 @@ def cmd_answer_precheck(repo, state, a):
     choice = a.choice or ("confirmed" if baseline == "confirmed" else None)
     if choice not in pre.get("options", {}).get(a.id, list("ABCD")):
         fail("该确认项未提供这个选项；请保留用户原话，先澄清实际期望")
-    for field in ("user_answer", "summary", "evidence"):
+    for field in ("user_answer", "summary", "evidence", "source_ref", "scope"):
         if not getattr(a, field, "").strip():
-            fail("必须记录用户真实选择、简短对齐说明与具体需求/实现证据")
+            fail("请记录真实原话、来源位置、适用范围、对齐说明与实现证据")
+    if a.source_kind not in CONFIRMATION_SOURCES + ("discussion",):
+        fail("启动授权和 Agent 自选方案不能确认需求。请引用明确要求、明确委托或已批准的具体约定。")
     if baseline not in ("A", "B", "C", "confirmed"):
         fail("当前约定选项无效，不能自动对齐")
-    aligned = choice == baseline and not a.needs_discussion
+    aligned = choice == baseline and not a.needs_discussion and a.source_kind in CONFIRMATION_SOURCES
     record = {"id": a.id, "choice": choice, "baseline": baseline,
               "result": "aligned" if aligned else "discussion",
-              "user_answer": a.user_answer, "summary": a.summary, "evidence": a.evidence}
+              "user_answer": a.user_answer, "summary": a.summary, "evidence": a.evidence,
+              "source_kind": a.source_kind, "source_ref": a.source_ref, "scope": a.scope}
     pre["attempts"].append(record)
     if aligned:
         pre["results"][a.id] = record
@@ -474,16 +511,16 @@ def cmd_answer_precheck(repo, state, a):
     if not aligned:
         print("出现需求分歧或不确定：这不是答错。暂停后续问题，解释当前方案、代码和差别；用户明确决定保留则 resume-precheck 记录该次确认，决定修改则 revise 后重新验证。")
     elif state["phase"] == "await_acceptance":
-        print("关键约定已对齐。已有明确验收原话时直接登记，否则询问是否接受当前结果。")
+        print("关键约定已对齐。展示或引用当前真实 case 后，按用户原话登记验收，只询问仍缺的决定。")
     else:
-        upcoming = [x for x in pre["questions"] if x not in pre["results"]][0]
+        upcoming = pending_questions(pre)[0]
         print(f"本项已对齐，接着记录 {upcoming}。只向用户询问仍未解决的决定。")
 
 
 def cmd_resume_precheck(repo, state, a):
     need(state, "precheck_discussion")
-    if not a.user_quote.strip():
-        fail("必须记录用户解决分歧、明确选择保留当前已批准方案的原话")
+    if not a.user_quote.strip() or not a.source_ref.strip():
+        fail("请记录用户解决分歧的原话及消息位置")
     if state.get("precheck", {}).get("file_hash") != file_digest(precheck_file(repo, state)):
         fail("约定清单发生变化，必须重设预验收")
     assert_source_unchanged(repo, state)
@@ -493,7 +530,27 @@ def cmd_resume_precheck(repo, state, a):
     cmd_answer_precheck(repo, state, argparse.Namespace(
         id=q, choice=pre["baselines"][q], user_answer=a.user_quote,
         summary="用户讨论后明确确认当前行为", evidence=pre["attempts"][-1]["evidence"],
+        source_kind="requirement", source_ref=a.source_ref, scope=pre["attempts"][-1]["scope"],
         needs_discussion=False))
+
+
+def cmd_present_case(repo, state, a):
+    need(state, "precheck", "precheck_discussion", "await_acceptance")
+    assert_source_unchanged(repo, state)
+    if a.kind != "real":
+        fail("正常验收需要真实 case。模拟或未运行状态请记录限制，不能登记为已展示的真实运行。")
+    for field in ("case_id", "evidence", "presentation_ref", "summary"):
+        if not getattr(a, field, "").strip():
+            fail("请记录真实 case、运行证据、展示位置和输入到结果的说明")
+    path = (repo / a.evidence).resolve()
+    if not path.is_relative_to(repo) or not path.is_file() or not path.read_bytes().strip():
+        fail("运行证据须为当前项目内实际存在且非空的文件")
+    state["precheck"]["case_presentation"] = {
+        "case_id": a.case_id, "kind": a.kind, "evidence": path.relative_to(repo).as_posix(),
+        "evidence_sha256": file_digest(path), "presentation_ref": a.presentation_ref, "summary": a.summary}
+    write_precheck_results(repo, state)
+    save(repo, state, "已展示真实 case：" + a.case_id + "；位置：" + a.presentation_ref)
+    print("真实 case 展示已记录。只询问尚未明确的核心决定，不重复已有确认。")
 
 
 def cmd_reset_precheck(repo, state, a):
@@ -514,6 +571,7 @@ def cmd_revise(repo, state, a):
     if state["current_step"] in state["accepted_steps"]:
         state["accepted_steps"].remove(state["current_step"])
     state["phase"] = "implementing"
+    state["precheck"].pop("case_presentation", None)
     save(repo, state, "按当前授权修订，重验受影响实现并保留未变化的确认：" + a.user_quote)
     print("修改后验证受影响实现、更新讲解；只确认新增、变化或尚未解决的行为。")
 
@@ -523,11 +581,15 @@ def cmd_accept(repo, state, a):
     pre = state.get("precheck", {})
     qs = pre.get("questions", [])
     passed = pre.get("results", {})
-    if pre.get("schema") != PRECHECK_SCHEMA or not qs or any(passed.get(q, {}).get("result") != "aligned" for q in qs):
+    if pre.get("schema") != PRECHECK_SCHEMA or not qs or any(
+            passed.get(q, {}).get("result") != "aligned" or not has_confirmation_source(passed[q]) for q in qs):
         fail("关键约定尚未都有真实确认与证据，不能验收")
     if pre.get("file_hash") != file_digest(precheck_file(repo, state)):
         fail("预验收约定清单被修改，需重设并重新逐项预验收")
     assert_source_unchanged(repo, state)
+    case = pre.get("case_presentation")
+    if not case or file_digest(repo / case["evidence"]) != case["evidence_sha256"]:
+        fail("验收前请展示并登记当前版本的真实 case，包含关键实现、日志、输出与结论依据")
     if not a.user_quote.strip():
         fail("必须记录用户明确验收通过的原话")
     if state["current_step"] not in state["accepted_steps"]:
@@ -591,9 +653,17 @@ def parser():
     x.add_argument("--id", required=True); x.add_argument("--choice", choices=list("ABCD") + ["confirmed"])
     x.add_argument("--user-answer", required=True); x.add_argument("--summary", required=True)
     x.add_argument("--evidence", required=True)
+    x.add_argument("--source-kind", choices=list(CONFIRMATION_SOURCES) + ["discussion", "authorization", "agent-choice"], required=True)
+    x.add_argument("--source-ref", required=True, help="原话所在消息或已批准具体约定的位置")
+    x.add_argument("--scope", required=True, help="原话实际覆盖的行为与适用条件")
     x.add_argument("--needs-discussion", action="store_true", help="用户虽选择当前方案但仍有保留意见")
     x = sub.add_parser("resume-precheck", help="记录用户讨论后明确保留当前约定的真实确认")
     x.add_argument("--user-quote", required=True)
+    x.add_argument("--source-ref", required=True)
+    x = sub.add_parser("present-case", help="登记已向用户展示的真实运行及关键依据")
+    x.add_argument("--case-id", required=True); x.add_argument("--kind", choices=["real", "simulated", "not-run"], required=True)
+    x.add_argument("--evidence", required=True); x.add_argument("--presentation-ref", required=True)
+    x.add_argument("--summary", required=True, help="已展示的输入、关键实现、日志、输出与结论依据")
     x = sub.add_parser("reset-precheck", help="按对应要求整理约定，保留未变化的确认")
     x.add_argument("--user-quote", required=True)
     x.add_argument("--affected", nargs="*", default=[], help="需要补充确认的题号")
@@ -619,6 +689,7 @@ def main():
         "configure-git": cmd_configure_git, "authorize": cmd_authorize,
         "verified": cmd_verified, "documented": cmd_documented,
         "start-precheck": cmd_start_precheck, "answer-precheck": cmd_answer_precheck, "resume-precheck": cmd_resume_precheck,
+        "present-case": cmd_present_case,
         "reset-precheck": cmd_reset_precheck,
         "revise": cmd_revise, "accept": cmd_accept,
         "pushed": cmd_pushed, "status": cmd_status,
