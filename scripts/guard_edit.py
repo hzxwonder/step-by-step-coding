@@ -56,7 +56,7 @@ def check(payload, repo):
     if phase == "planning":
         if relative in design_paths or (relative.startswith(base_dir + "steps/") and relative.endswith("/plan.md")):
             return None
-        return "设计阶段可编写当前任务的设计、技术方案、计划与 HTML 原型；业务实现须先获授权"
+        return "设计阶段可编写当前任务的实验设计、技术方案、计划与按需原型；研究实现与实验运行须先获授权"
     if phase in ("await_git_preference", "await_step_authorization", "await_next_step"):
         planned_step = int(state["current_step"]) + 1 if phase == "await_next_step" else 1
         next_plan = base_dir + f"steps/{planned_step:02d}-step/plan.md"

@@ -70,6 +70,9 @@ class WorkflowTest(unittest.TestCase):
         base = master.parent
         (base / "mvp-design.md").write_text(
             "# MVP 设计\n- **核心闭环**：用户从入口调用 feature()，看到 ready 结果并保存运行记录。\n"
+            "- **研究问题**：当前实现能否正确执行最小输入并保留可核对的运行证据。\n"
+            "- **判定规则**：先检查执行与记录是否完整，本轮不据此判断方法是否优于对照。\n"
+            "- **资源边界**：仅使用本机 CPU 运行演示输入，耗时上限一分钟，不使用付费服务。\n"
             "主要功能：调用入口、展示结果。仅支持已约定的演示输入。\n", encoding="utf-8")
         (base / "technical-plan.md").write_text(
             "# 技术方案\n- **采用方案**：使用现有 Python 环境和标准库，以命令行输出并保存 JSON 记录。\n"
@@ -474,6 +477,86 @@ class WorkflowTest(unittest.TestCase):
             path.write_text(valid_text)
         self.call("approve-plan", "--user-quote", "认可已展示的设计和方案")
         self.assertEqual(self.read_state()["accepted_steps"], [])
+
+    def test_research_default_requires_question_decision_and_budget(self):
+        self.call("init", "--slug", "demo", "--title", "最小实验", "--steps", "1")
+        self.assertEqual(self.read_state()["focus"], "research")
+        self.fill_plan_rationale(1)
+        path = self.repo / "docs/ai-collab/demo/mvp-design.md"
+        original = path.read_text()
+        for field in ("研究问题", "判定规则", "资源边界"):
+            with self.subTest(field=field):
+                path.write_text(re.sub(r"(?m)^- \*\*" + field + r"\*\*：.*$", "- **" + field + "**：待讨论", original))
+                self.call("approve-plan", "--user-quote", "认可本轮实验设计", succeeds=False)
+                self.assertEqual(self.read_state()["phase"], "planning")
+        path.write_text(original)
+        self.call("approve-plan", "--user-quote", "认可当前问题、判定规则和资源边界")
+
+    def test_software_focus_keeps_research_fields_optional(self):
+        self.call("init", "--slug", "demo", "--title", "小工具", "--steps", "1", "--focus", "software")
+        self.fill_plan_rationale(1)
+        path = self.repo / "docs/ai-collab/demo/mvp-design.md"
+        path.write_text("# MVP 设计\n- **核心闭环**：用户输入内容后获得结果，保存后可以重新打开。\n")
+        self.call("approve-plan", "--user-quote", "认可已展示的工具设计与计划")
+        self.assertEqual(self.read_state()["focus"], "software")
+
+    def test_existing_task_keeps_its_plan_contract(self):
+        self.call("init", "--slug", "demo", "--title", "已有任务", "--steps", "1")
+        self.fill_plan_rationale(1)
+        state = self.read_state()
+        state.pop("focus", None)
+        (self.repo / ".ai-collab/demo/state.json").write_text(json.dumps(state))
+        path = self.repo / "docs/ai-collab/demo/mvp-design.md"
+        path.write_text("# 已有设计\n- **核心闭环**：沿用已批准的输入处理规则并保存当前结果。\n")
+        self.call("approve-plan", "--user-quote", "沿用已展示设计与当前步计划")
+
+    def test_negative_experiment_can_be_accepted_with_valid_execution(self):
+        self.init_plan(steps=1)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "按小样本比较方案开始，只核对当前条件下的结果")
+        self.prepare_docs(1)
+        source = self.repo / "src/one.py"
+        source.write_text("import json\n"
+                          "labels = [0, 0, 1, 1]\n"
+                          "baseline = [0, 0, 1, 1]\n"
+                          "candidate = [0, 1, 1, 1]\n"
+                          "scores = {name: sum(p == y for p, y in zip(pred, labels)) / len(labels)\n"
+                          "          for name, pred in [('baseline', baseline), ('candidate', candidate)]}\n"
+                          "print(json.dumps({'labels': labels, 'baseline_predictions': baseline,\n"
+                          "                  'candidate_predictions': candidate, 'accuracy': scores}))\n")
+        run = subprocess.run([sys.executable, "src/one.py"], cwd=self.repo, text=True, capture_output=True, check=True)
+        result = json.loads(run.stdout)
+        self.assertEqual(result["accuracy"], {"baseline": 1.0, "candidate": 0.75})
+        (self.repo / "runs/demo-case.json").write_text(run.stdout)
+        folder = self.repo / "docs/ai-collab/demo/steps/01-step"
+        (folder / "verification.md").write_text("执行与证据完整。固定四条标签和预测，baseline 准确率 1.0，candidate 0.75。\n"
+                                                "本次不支持 candidate 更好的判断，仅为小样本固定预测的比较，不作推广。\n")
+        (folder / "preacceptance.md").write_text("### Q1 小样本准确率的计算与解释\n"
+                                                "- **决策层级**：核心\n- **选择影响**：决定当前结果可以支持的结论范围。\n"
+                                                "- **当前约定**：相同四条标签计算准确率，保留不支持假说的结果。\n"
+                                                "- **证据**：src/one.py、verification.md、runs/demo-case.json\n"
+                                                "- **分歧处理**：核对计算和数据，新的实验设计另行讨论。\n")
+        self.call("verified", "--result", "fail", "--finding", "does-not-support", "--evidence", "执行错误", succeeds=False)
+        self.call("verified", "--result", "pass", "--finding", "does-not-support", "--evidence", "runs/demo-case.json")
+        self.assertEqual(self.read_state()["verification_records"]["1"]["finding"], "does-not-support")
+        self.call("documented")
+        self.call("start-precheck")
+        self.call("present-case", "--case-id", "four-labels", "--kind", "real", "--evidence", "runs/demo-case.json",
+                  "--presentation-ref", "test:shown-comparison", "--summary", "相同四条标签，baseline 1.0、candidate 0.75，本次不支持提升。")
+        self.confirm("--id", "Q1", "--user-answer", "按这个计算规则保留负结果，当前实验记录符合要求",
+                     "--summary", "认可执行与记录，保留假说未获支持的科学判断", "--evidence", "四条样本的预测与实测准确率")
+        self.call("accept", "--user-quote", "当前实验已按约定完成并保留负结果，验收这一步")
+        self.assertEqual(self.read_state()["phase"], "completed")
+
+    def test_revision_clears_previous_execution_finding(self):
+        self.init_plan(steps=1)
+        self.call("configure-git", "--mode", "off")
+        self.call("authorize", "--step", "1", "--user-quote", "开始当前步骤")
+        self.prepare_docs(1)
+        self.call("verified", "--result", "pass", "--finding", "inconclusive", "--evidence", "当前证据不足")
+        self.assertIn("1", self.read_state()["verification_records"])
+        self.call("revise", "--user-quote", "按当前授权修正计算错误并重新核对")
+        self.assertNotIn("1", self.read_state()["verification_records"])
 
     def test_first_usable_step_must_be_in_route(self):
         self.call("init", "--slug", "demo", "--title", "示范", "--steps", "2")

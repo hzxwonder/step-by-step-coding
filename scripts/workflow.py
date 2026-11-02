@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""辅助状态机：不接触远程、不会自动写业务代码。Python 3.9+，无三方依赖。"""
+"""辅助状态机：不接触远程、不会自动执行研究代码或实验。Python 3.9+，无三方依赖。"""
 import argparse
 import hashlib
 import json
@@ -102,7 +102,7 @@ def cmd_init(repo, a):
         folder.mkdir(parents=True)
         (folder / "plan.md").write_text(template_file("step-plan.md", {"STEP": f"{n:02d}", "STEP_TITLE": "待讨论"}), encoding="utf-8")
     state = {
-        "slug": a.slug, "title": a.title, "phase": "planning", "total_steps": a.steps,
+        "slug": a.slug, "title": a.title, "focus": a.focus, "phase": "planning", "total_steps": a.steps,
         "current_step": 1, "allowed_paths": {str(i): [] for i in range(1, a.steps + 1)},
         "accepted_steps": [], "git": {"mode": "undecided", "platform": None, "remote": None, "branch": None},
         "push_records": [], "precheck": empty_precheck(), "history": []
@@ -110,7 +110,7 @@ def cmd_init(repo, a):
     active_file(repo).parent.mkdir(parents=True, exist_ok=True)
     active_file(repo).write_text(json.dumps({"slug": a.slug}, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     save(repo, state, "初始化计划文件（尚无代码授权）")
-    print(f"已生成 MVP 设计、技术方案、总计划和 {a.steps} 个步骤计划；目前可设计与制作产品 HTML 原型。")
+    print(f"已生成最小验证设计、技术方案、总计划和 {a.steps} 个步骤计划；当前只整理设计，实施与实验运行需授权。")
 
 
 def need(state, *phases):
@@ -168,6 +168,11 @@ def validate_mvp_design(repo, state):
         path = base / name
         if not path.is_file() or not substantial_reason(plan_field(path.read_text(encoding="utf-8"), field)):
             fail(f"请先讨论并完善 {name} 的‘{field}’，向用户展示后再记录批准")
+    if state.get("focus") == "research":
+        design = (base / "mvp-design.md").read_text(encoding="utf-8")
+        for field in ("研究问题", "判定规则", "资源边界"):
+            if not substantial_reason(plan_field(design, field)):
+                fail(f"科研计划须明确‘{field}’，有核心未决项时先讨论再记录批准")
     text = (base / "plan.md").read_text(encoding="utf-8")
     milestone = plan_field(text, "首次可用步骤")
     if not re.fullmatch(r"[0-9]{1,2}", milestone) or not 1 <= int(milestone) <= state["total_steps"]:
@@ -287,10 +292,12 @@ def cmd_verified(repo, state, a):
     if not path.is_file():
         fail("请先生成当前步骤 verification.md，并记录实际测试命令和结果")
     if a.result != "pass":
-        fail("测试未通过或受阻不能进入正常验收；请保留证据并与用户讨论")
+        fail("执行或证据核对未通过，不能进入正常验收。保留错误或阻碍；假说未获支持不等于执行失败。")
+    state.setdefault("verification_records", {})[str(state["current_step"])] = {
+        "execution": a.result, "finding": a.finding, "evidence": a.evidence}
     state["phase"] = "explaining"
-    save(repo, state, f"步骤 {state['current_step']} 的验证自报通过：{a.evidence}")
-    print("验证已记录。制作简短的 explain.md，供用户按需阅读。")
+    save(repo, state, f"步骤 {state['current_step']} 执行与证据核对自报通过，科学判断 {a.finding}：{a.evidence}")
+    print("执行核对与科学判断已分别记录。制作简短 explain.md，说明结果和适用条件。")
 
 
 def cmd_documented(repo, state, a):
@@ -597,6 +604,7 @@ def cmd_revise(repo, state, a):
     if state["current_step"] in state["accepted_steps"]:
         state["accepted_steps"].remove(state["current_step"])
     state["phase"] = "implementing"
+    state.get("verification_records", {}).pop(str(state["current_step"]), None)
     state["precheck"].pop("case_presentation", None)
     save(repo, state, "按当前授权修订，重验受影响实现并保留未变化的确认：" + a.user_quote)
     print("修改后验证受影响实现、更新讲解；只确认新增、变化或尚未解决的行为。")
@@ -658,6 +666,7 @@ def parser():
     sub = p.add_subparsers(dest="command", required=True)
     x = sub.add_parser("init", help="初始化 MVP 设计、技术方案、总路线与步骤计划")
     x.add_argument("--slug", required=True); x.add_argument("--title", required=True); x.add_argument("--steps", type=int, required=True)
+    x.add_argument("--focus", choices=["research", "software"], default="research", help="默认科研；明确的软件任务由 Agent 选 software，无需另问")
     x = sub.add_parser("approve-plan", help="记录用户认可已展示的 MVP 设计、技术方案、总路线及当前步计划")
     x.add_argument("--user-quote", required=True)
     x = sub.add_parser("allow-path", help="登记指定步骤获批的精确代码路径")
@@ -668,8 +677,10 @@ def parser():
     x.add_argument("--user-quote", default=""); x.add_argument("--allow-protected", action="store_true")
     x = sub.add_parser("authorize", help="记录用户明确授权当前/下一步")
     x.add_argument("--step", type=int, required=True); x.add_argument("--user-quote", required=True)
-    x = sub.add_parser("verified", help="仅真实测试通过后记录结果")
+    x = sub.add_parser("verified", help="记录真实执行与证据核对，科学判断单独记录")
     x.add_argument("--result", choices=["pass", "fail", "blocked"], required=True); x.add_argument("--evidence", required=True)
+    x.add_argument("--finding", choices=["supports", "does-not-support", "inconclusive", "not-assessed"], default="not-assessed",
+                   help="本次证据对已约定假说的判断；不影响执行是否有效，不代替人工核对")
     sub.add_parser("documented", help="登记完成步骤讲解文档")
     x = sub.add_parser("revise", help="根据当前授权修订本步骤，重新核对受影响证据")
     x.add_argument("--user-quote", required=True)
