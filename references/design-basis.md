@@ -27,3 +27,8 @@
 - [GitHub Spec Kit：需求澄清](https://github.com/github/spec-kit/blob/main/templates/commands/specify.md)区分可记录的默认假设和实质性歧义。科研工作用结论、权限、成本是否改变来决定要不要问。
 - [Codex 默认协作模式](https://github.com/openai/codex/blob/main/codex-rs/collaboration-mode-templates/templates/default.md)鼓励基于合理假设推进，将可选问题留给能实质改善结果的情境。涉及授权的事项继续遵循实际权限。
 - [fastai 教学 Notebook](https://github.com/fastai/fastbook/blob/master/04_mnist_basics.ipynb)用具体样本引出基线，再解释指标与适用条件。[Notebook CLI 编写指南](https://github.com/jupyter-ai-contrib/nb-cli/blob/main/skills/notebook-cli/references/best-practices.md)建议在代码前解释目的、集中配置，并从干净内核顺序执行。样例采用这些呈现方式；实验问题与方法由项目决定。
+
+
+## 可读实验单元
+
+[OpenAI jupyter-notebook](https://github.com/openai/skills/blob/main/skills/.curated/jupyter-notebook/SKILL.md) 的教学结构将短说明、可运行小步和解释相邻排列。[notebook-cli](https://github.com/jupyter-ai-contrib/nb-cli/blob/main/skills/notebook-cli/SKILL.md) 的分节编辑和单元执行可用于保持运行与页面同步。[nbdev](https://nbdev.fast.ai/tutorials/tutorial.html) 展示函数、示例与模块导出的单一来源做法。本技能据此要求当前研究定义与实际执行对应，并把学习反馈安排在可判读观察处。工具按环境选用。

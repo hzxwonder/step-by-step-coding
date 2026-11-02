@@ -15,6 +15,8 @@ This README explains installation and use in English.
 
 Computational MVPs are delivered as a narrated Jupyter notebook. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
 
+Core research methods, controls, and metrics are visible in notebook cells and used by the actual comparison. Each definition is followed by a concrete example and observation.
+
 ## What the skill does
 
 - Discuss one core decision at a time, using examples to explain its effect on results, scope, or costs.
