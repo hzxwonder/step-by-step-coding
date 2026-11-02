@@ -1,0 +1,61 @@
+/* Research notebook reading layout. Loaded by the project's JupyterLab service. */
+.jp-NotebookPanel .jp-Notebook {
+  padding: 28px clamp(12px, 3vw, 36px) 64px !important;
+  background: var(--jp-layout-color0);
+}
+.jp-Notebook .jp-Cell {
+  max-width: 860px;
+  margin: 0 auto 18px !important;
+}
+.jp-Notebook .jp-RenderedHTMLCommon {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Noto Sans CJK SC", sans-serif;
+  font-size: 16px;
+  line-height: 1.85;
+  color: var(--jp-ui-font-color1);
+}
+.jp-Notebook .jp-RenderedHTMLCommon h1 {
+  border-left: 4px solid #29877e;
+  padding-left: 16px;
+  color: #237970;
+  font-size: 27px;
+  line-height: 1.4;
+  font-weight: 650;
+  margin: 6px 0 26px;
+}
+.jp-Notebook .jp-RenderedHTMLCommon h2 {
+  font-size: 20px;
+  font-weight: 650;
+  line-height: 1.5;
+  margin-top: 30px;
+  padding-bottom: 9px;
+  border-bottom: 1px solid #29877e40;
+}
+.jp-Notebook .jp-RenderedHTMLCommon h3 { font-size: 17px; line-height: 1.5; }
+.jp-Notebook .jp-RenderedHTMLCommon p { margin: 0 0 14px; }
+.jp-Notebook .jp-RenderedHTMLCommon table {
+  width: 100%;
+  margin: 20px 0;
+  font-size: 14px;
+  line-height: 1.65;
+  text-align: left;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.jp-Notebook .jp-RenderedHTMLCommon th,
+.jp-Notebook .jp-RenderedHTMLCommon td { padding: 10px 12px; text-align: left; }
+.jp-Notebook .jp-RenderedHTMLCommon th { background: #29877e12; color: #237970; }
+.jp-Notebook .jp-RenderedHTMLCommon blockquote {
+  border-left: 3px solid #29877e;
+  background: #29877e0c;
+  padding: 12px 18px;
+  margin: 18px 0;
+}
+.jp-Notebook .jp-InputArea-editor {
+  border: 1px solid var(--jp-border-color2);
+  border-radius: 9px;
+  padding: 10px 12px;
+}
+.jp-Notebook .jp-InputPrompt,
+.jp-Notebook .jp-OutputPrompt { font-size: 12px; opacity: .65; }
+.jp-Notebook .jp-CodeMirrorEditor { font-size: 13px; line-height: 1.65; }
+.jp-Notebook .jp-OutputArea-output { line-height: 1.6; padding-top: 10px; }
