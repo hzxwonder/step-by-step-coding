@@ -21,3 +21,9 @@
 代码中的保护处理须对应具体输入、已知失败或真实风险。写作中的解释须帮助读者理解、操作或决定。两者都保留当前任务的必要条件，不为缩短内容牺牲正确性。
 
 用户表达目标。Agent 查证事实、提出建议、维护计划并提供证据。用户据此确认体验、验收结果和授权下一步。技术讲解按需展开，理解源码不是验收结果的前提。
+
+## 实验 Notebook 与低打扰协作
+
+- [GitHub Spec Kit：需求澄清](https://github.com/github/spec-kit/blob/main/templates/commands/specify.md)区分可记录的默认假设和实质性歧义。科研工作用结论、权限、成本是否改变来决定要不要问。
+- [Codex 默认协作模式](https://github.com/openai/codex/blob/main/codex-rs/collaboration-mode-templates/templates/default.md)鼓励基于合理假设推进，将可选问题留给能实质改善结果的情境。涉及授权的事项继续遵循实际权限。
+- [fastai 教学 Notebook](https://github.com/fastai/fastbook/blob/master/04_mnist_basics.ipynb)用具体样本引出基线，再解释指标与适用条件。[Notebook CLI 编写指南](https://github.com/jupyter-ai-contrib/nb-cli/blob/main/skills/notebook-cli/references/best-practices.md)建议在代码前解释目的、集中配置，并从干净内核顺序执行。样例采用这些呈现方式；实验问题与方法由项目决定。

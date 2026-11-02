@@ -393,7 +393,9 @@ def validate_question_file(path):
     headings = list(re.finditer(r"(?m)^### (Q[1-9][0-9]*)\s+([^\n]+)$", content))
     questions = [m.group(1) for m in headings]
     if not questions:
-        fail("请记录本步实际需要核对的关键约定，已有明确原话的项目无需重问")
+        if re.fullmatch(r"无新增约定：[ \t]*[^\s].*", content.strip()):
+            return [], {}, {}
+        fail("请登记关键约定。若只是实施既有计划，单行写「无新增约定：」及具体依据")
     if questions != [f"Q{i}" for i in range(1, len(questions) + 1)]:
         fail("题号必须从 Q1 连续编号")
     baseline_map = {}
@@ -485,6 +487,8 @@ def cmd_start_precheck(repo, state, a):
     levels = decision_levels(path)
     hashes = question_hashes(path)
     previous = state.get("precheck") or empty_precheck()
+    if not questions and previous.get("questions"):
+        fail("已有关键约定须保留并按其来源核对")
     old_hashes = previous.get("question_hashes", {})
     same_file = previous.get("file_hash") == file_digest(path)
     retained = {q: record for q, record in previous["results"].items()
@@ -615,7 +619,8 @@ def cmd_accept(repo, state, a):
     pre = state.get("precheck", {})
     qs = pre.get("questions", [])
     passed = pre.get("results", {})
-    if pre.get("schema") != PRECHECK_SCHEMA or not qs or any(
+    if pre.get("schema") != PRECHECK_SCHEMA or (not qs and
+            validate_question_file(precheck_file(repo, state))[0] != []) or any(
             passed.get(q, {}).get("result") != "aligned" or not has_confirmation_source(passed[q]) for q in qs):
         fail("关键约定尚未都有真实确认与证据，不能验收")
     if pre.get("file_hash") != file_digest(precheck_file(repo, state)):

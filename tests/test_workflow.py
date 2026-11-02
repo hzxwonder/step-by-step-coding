@@ -160,6 +160,21 @@ class WorkflowTest(unittest.TestCase):
             for i, behavior in enumerate(agreements[:count], 1)))
         self.call("verified", "--result", "pass", "--evidence", "demo 真实运行记录与结果已核对")
 
+    def test_existing_protocol_needs_no_invented_question(self):
+        self.prepare_direct_precheck()
+        self.call("documented")
+        path = self.repo / "docs/ai-collab/demo/steps/01-step/preacceptance.md"
+        path.write_text("无新增约定：")
+        self.call("start-precheck", succeeds=False)
+        path.write_text("无新增约定：本步执行已批准的输入和评测规则，结果目录使用项目默认。")
+        self.call("start-precheck")
+        self.assertEqual(self.read_state()["phase"], "await_acceptance")
+        self.call("accept", "--user-quote", "接受", succeeds=False)
+        self.present_case()
+        self.call("accept", "--user-quote", "", succeeds=False)
+        self.call("accept", "--user-quote", "真实结果符合本步要求")
+        self.assertEqual(self.read_state()["phase"], "await_next_step")
+
     def test_direct_agreements_reuse_one_explicit_acceptance_and_authorization(self):
         self.prepare_direct_precheck(count=7)
         self.call("documented")

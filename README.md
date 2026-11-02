@@ -13,6 +13,8 @@ Short explanations support your current decision. Detailed evidence stays in the
 The skill instructions, templates, and teaching documents use Simplified Chinese.
 This README explains installation and use in English.
 
+Computational MVPs are delivered as a narrated Jupyter notebook. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
+
 ## What the skill does
 
 - Discuss one core decision at a time, using examples to explain its effect on results, scope, or costs.
