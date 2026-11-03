@@ -13,18 +13,22 @@ Short explanations support your current decision. Detailed evidence stays in the
 The skill instructions, templates, and teaching documents use Simplified Chinese.
 This README explains installation and use in English.
 
+Computational MVPs are delivered as a narrated Jupyter notebook. Discuss the idea and adopt the steps first. A step can contain several cells. Chat handoffs aim for a five-second scan. Automatic short checks have a 60-second group limit. Long or unknown-duration cells require manual execution. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
+
+The agent restores research progress internally, preserving adopted scientific and resource decisions while adjusting engineering plans as needed. The notebook teaches the current method, control, and actual results through short code cells, reusing valid implementations. Concepts, examples, and diagrams are added when they help current understanding or you ask for them. The real comparison takes priority over tutorial completeness, layout, and explanations of every metric. Infrastructure uses established modules.
+
 ## What the skill does
 
 - Discuss one core decision at a time, using examples to explain its effect on results, scope, or costs.
-- Return the minimal experiment design after each design discussion. Define methods, controls, data, metrics, decision rules, resources, and implementation.
-- Run the core comparison early after design approval and permission to begin. Extend experiments as the evidence requires.
+- Update the current experiment design when a decision changes. Reuse adopted methods, controls, data, metrics, decision rules, and budgets.
+- Adopt a same-day step list. Save and hand off one Notebook step per turn for review and feedback.
 - Explain the current question, observed facts, hypotheses, and why the next experiment is useful.
 - Connect key agreements to checks and real evidence. Select tests or actual operations to match the change.
 - Use consistent research terms, explain formula-to-code mappings, and provide detail when needed.
 - Record confirmation sources and scope. Retain applicable decisions, and record authorization and acceptance separately.
-- Show a real case before acceptance. Separate execution validity, scientific findings, and user acceptance. Save under the agreed Git policy.
+- Show the current real case and separate execution validity, scientific findings, and user acceptance. Follow the user’s teaching and review cadence, and the agreed Git policy.
 
-Acceptance checks implementation and experiment agreements. Valid negative results can complete a step. Successful execution does not establish scientific support.
+Valid negative results can complete a milestone. Successful execution does not establish scientific support. Learning questions help explain the observation; they are not acceptance requirements.
 After a change, the agent tests the affected implementation and confirms only new, changed, or unresolved behavior.
 The agent can use an earlier explicit request after it implements and verifies that request.
 
@@ -36,7 +40,9 @@ You can answer in your own words or ask for an example. You do not need to selec
 
 For example: **Should this experiment compare overall performance or test a specific mechanism?** This changes the controls and observations.
 The agent connects your decision to formulas, code, and evaluation rules, then explains the result.
-If you feel lost, it explains a smaller example before it introduces more terms.
+If you feel lost, it walks through the current case with a short explanation before adding detail. Existing valid checks are reused. The first comparison uses only its necessary path; feedback speed is improved after an informative observation.
+
+The [Chinese notebook writing conventions](references/notebook-cells.md#中文教学写法与结果判读) specify terminology, metric denominators and comparison scales, distinguish percentage points from relative changes, and keep unrun, failed and inconclusive states separate. Figures identify units, comparators and statistical meaning; uncertainty names the actual missing evidence.
 
 ## Requirements
 
@@ -99,76 +105,54 @@ Open your target project in your coding agent.
 Send this prompt in Codex:
 
 ```text
-$step-by-step-coding 帮我验证这个研究模块是否有效。我是科研初学者。
-先接续已有协议，讨论最小实验、对照、指标和预算，再按认可与授权逐步实现。
+$step-by-step-coding 帮我根据当前实验包完成 MVP。我是科研初学者。
+沿用核心 idea、已采用协议和有效结果，让 Notebook 从基本概念讲起，用实例、图解和短代码逐步实现核心方法，再讲清对照与观察。
 ```
 
 In Claude Code, replace `$step-by-step-coding` with `/step-by-step-coding`.
 
-After each design discussion, the agent returns the current minimal experiment design and references existing protocols.
-Experiment tables, samples, and output examples support decisions. HTML prototypes are used when an interactive tool is required.
-One explicit reply can approve the designs and route, and authorize the first step. Later steps need only outlines until implementation approaches.
-Files stay local by default. If you request remote backups, the agent confirms only the missing destination and branch details.
-If you choose a push, confirm the repository and branch.
+The agent recovers the adopted design, budget, and valid results before planning further comparisons. The notebook uses ordinary language, explains each section’s purpose and what to look for, and introduces technical terms in everyday words. Experiment IDs, hashes, approvals, and management checklists stay in project records. Questions address unresolved choices that affect the hypothesis, fair comparisons, permissions, or cost.
 
-Use these messages as the task proceeds:
+The agent completes one adopted step per turn, using several cells when useful. It saves the Notebook and ends the turn for your review, execution or feedback. It integrates edits in place. A request to continue advances the next adopted step; individual cells do not need separate approval.
 
-| Your message | What it authorizes |
+| Your message | What happens |
 |---|---|
-| `确认需求，生成计划` | Create the main plan and the step plans. |
-| `认可刚展示的实验设计、技术方案和计划` | Approve the displayed designs and plans. Implementation still needs permission to start. |
-| `开始第 1 步` | Implement the first step under the approved plan. |
-| `解释一下这段代码` | Explain the current implementation. |
-| `开始预验收` | Check key agreements. Ask only about unresolved decisions. |
-| `本步骤验收通过` | Accept the current step after behavior confirmation. |
-| `开始第 2 步` | Start the next step. |
+| `按当前方案开始` | Implement and hand off the current adopted step. Use bounded short checks or manual execution. |
+| `继续` | Advance the next adopted step. Identify manual cells that still need results. |
+| `解释一下这段代码` | Explain the current implementation or case. |
+| `把这个对照换成……` | Review the effect on the question, fairness, and cost before changing the comparison. |
+| `本轮符合预期` | Record acceptance of the displayed result within its actual scope. |
 
-The messages above are examples. You can use other words that clearly express the same decision.
-For example, “这一步符合我的预期，就这样” accepts the current step after behavior confirmation.
-The agent interprets your reply in context and records your actual words.
+These are examples, not required phrases. The agent keeps the source and scope of your decisions. Resource permission and per-step handoffs are maintained separately. A request to continue does not establish scientific support or formal acceptance. New costs, permissions, or changes beyond the adopted scientific scope require the corresponding decision.
 
-Plan approval, step acceptance, and permission to start the next step are separate decisions.
-One explicit statement can cover several decisions. The agent records each decision without asking again. One decision does not imply the others.
+The agent runs only authorized, known short checks for the current step. The whole turn has a 60-second automatic-test limit. Long or unknown-duration cells require manual execution. Preparation addresses current-step blockers. It reuses SDKs, evaluation tools, raw responses, and concise logs. Unknown metadata blocks execution only when it affects the comparison or a real resource or permission limit. Missing cost evidence limits cost claims while preserving other valid observations. Small MVP findings retain their measured scope; formal experiments follow the adopted evaluation and statistical protocol.
 
 ## Files in your project
 
-The agent creates these files in the project that you develop:
+Notebook teaching uses a compact layout:
 
 ```text
-docs/ai-collab/<task>/
-├── plan.md
-├── mvp-design.md
-├── technical-plan.md
-├── prototype.html  # When an interactive tool is required
-└── steps/01-step/
-    ├── plan.md
-    ├── verification.md
-    ├── explain.md
-    ├── preacceptance.md
-    └── preacceptance-results.md
-
-.ai-collab/<task>/state.json
-.ai-collab/active.json
+mvp.ipynb              # Design, readable implementation, observations, and reproduction
+.research/session.md   # Adopted sources, decisions, current milestone, and remaining work
+evidence/              # Raw results and logs when needed
 ```
 
-`mvp-design.md` defines the minimal experiment, decision rules, and resource limits. `technical-plan.md` records implementation sources, data flow, and evaluation.
-`plan.md` defines the first usable milestone and later steps. `verification.md` records actual test results.
-`explain.md` explains the result and implementation. `preacceptance.md` records key agreements and evidence.
-The results file records your answers. The `.ai-collab` files record workflow state.
+Existing protocols and results remain their source of truth. New explanations, examples, and code are integrated where they belong; affected parts are checked so the notebook remains readable and runnable from the start. Each update includes the existing real notebook URL and file link. Browser checks occur at the first teaching handoff or after relevant changes; layout and styling do not delay core computation.
 
-Keep personal answers and workflow state local.
-Add these patterns to your target project's `.gitignore` before a commit:
+Projects that explicitly use the state helper retain existing `docs/ai-collab/<task>/` records and `.ai-collab/` state. Templates are in `assets/`; see the [recording guide](references/alignment-mcq.md). State records reflect actual decisions and evidence; they do not create authorization, acceptance, or extra review steps. Explicit user pauses and acceptance points remain binding.
+
+Keep personal answers and workflow state local. Before committing a project that uses the helper, add these patterns to that project’s `.gitignore`:
 
 ```gitignore
 .ai-collab/
 **/preacceptance-results*.md
 ```
 
-The ignore file in this skill repository does not configure another project's ignore rules.
+The ignore file in this skill repository does not configure another project.
 
 ## Optional state helper
 
-The agent can use `scripts/workflow.py` to record approvals and enforce valid workflow transitions.
+The agent can use `scripts/workflow.py` to record decisions and check recorded workflow transitions.
 You can use the skill through conversation without typing the helper commands yourself.
 
 From this repository's root, inspect the helper with:
@@ -183,18 +167,9 @@ Always pass `--repo` before the command. Use it to identify the project that the
 python3 scripts/workflow.py --repo /path/to/your-project status
 ```
 
-`status` requires an initialized task. Ask the agent to initialize the workflow when you approve the planning work.
-The helper does not execute implementation tests, judge your answers, or push commits.
-The agent must run each test and record the actual evidence.
-
-Confirmation records require a source type, message reference, and scope. Authorization and agent choices cannot count as requirement confirmation.
-Acceptance also requires a recorded real-case presentation and an evidence file. The agent must check the meaning of the reply and the actual execution evidence.
-
-New tasks default to `research`. Plan approval checks the research question, decision rules, resource limits, core flow, and implementation proposal.
-Later steps need detail before authorization. Existing tasks retain their earlier plan requirements.
-The helper checks structure. The agent must check comparison validity, evidence quality, and authorization against actual materials and conversation.
-
-Acceptance checks include the experiment design, implementation plan, and optional HTML prototype. They detect edits, creation, and deletion.
+`status` requires an initialized helper task. Conversation-based use does not require initialization.
+The helper checks record structure; the agent checks authorization, scientific meaning, and real evidence. It does not run implementation tests or push commits.
+Record sources, scope, case presentation, and evidence only when they exist. If a state transition cannot represent an authorized comparison, retain the state and record progress in the notebook; do not invent acceptance to unlock it.
 After changes, review affected evidence and retain applicable confirmations. See the [behavior verification guide](references/behavior-verification.md).
 
 `verified --result pass` records valid execution and evidence checks. The optional `--finding` records scientific interpretation separately.
