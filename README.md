@@ -13,9 +13,9 @@ Short explanations support your current decision. Detailed evidence stays in the
 The skill instructions, templates, and teaching documents use Simplified Chinese.
 This README explains installation and use in English.
 
-Computational MVPs use a narrated Jupyter notebook. Adopt steps around visible research progress. A step can connect input, method, calls and observations across several cells. Save the current step and give its file link first. Run available short checks, then end the turn. Prepare environments and pages later when needed. Chat handoffs aim for a five-second scan. Short checks have a 60-second group limit; long or unknown-duration cells require manual execution. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
+Computational MVPs use a narrated Jupyter notebook. Adopt steps around visible research progress. A step can connect input, method, calls and observations across several cells. Save the current step and give its file link first. Run available short checks, then end the turn. Prepare environments and pages later when needed. Chat navigation summaries aim for a five-second scan. Research discussion and result interpretation have the depth the current question needs. Short checks have a 60-second group limit; long or unknown-duration cells require manual execution. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
 
-The agent restores research progress internally, preserving adopted scientific and resource decisions while adjusting engineering plans as needed. The notebook teaches the current method, control, and actual results through short code cells, reusing valid implementations. Concepts, examples, and diagrams are added when they help current understanding or you ask for them. The real comparison takes priority over tutorial completeness, layout, and explanations of every metric. Infrastructure uses established modules.
+The agent resumes your feedback and explains the current question, approach and role in the core idea. Adopted decisions stay in use; unresolved consequential needs are discussed. Each step contains several groups of explanatory text, code and outputs. Analysis beside core figures explains how values arise, why the result occurs and which part of the idea the evidence supports or limits.
 
 ## What the skill does
 
@@ -111,9 +111,9 @@ $step-by-step-coding 帮我根据当前实验包完成 MVP。我是科研初学�
 
 In Claude Code, replace `$step-by-step-coding` with `/step-by-step-coding`.
 
-The agent recovers the adopted design, budget, and valid results before planning further comparisons. The notebook uses ordinary language, explains each section’s purpose and what to look for, and introduces technical terms in everyday words. Experiment IDs, hashes, approvals, and management checklists stay in project records. Questions address unresolved choices that affect the hypothesis, fair comparisons, permissions, or cost.
+The agent recovers the adopted design, budget, and valid results before planning further comparisons. The notebook uses ordinary language, explains each section’s purpose and what to look for, and introduces technical terms in everyday words. Experiment IDs, hashes, approvals, and management checklists stay in project records. Decision questions address unresolved choices that affect the hypothesis, fair comparisons, permissions, or cost. Reading questions and result explanations can be discussed as needed.
 
-The agent completes one adopted step per turn, using several cells when useful. It saves the Notebook and ends the turn for your review, execution or feedback. It integrates edits in place. A request to continue advances the next adopted step; individual cells do not need separate approval.
+The agent completes one adopted step per turn using several text and code cells, each with one learning task. Step openings connect prior observations to the current evidence gap; endings explain the answer and next step. Chat invites feedback on the observation, target scenario or explanation. Edits are integrated in place; individual cells need no separate approval.
 
 | Your message | What happens |
 |---|---|
@@ -137,7 +137,7 @@ mvp.ipynb              # Design, readable implementation, observations, and repr
 evidence/              # Raw results and logs when needed
 ```
 
-Existing protocols and results remain their source of truth. Integrate edits in place. Each update includes the file link and an existing real notebook URL when available. Reuse known environments and checked pages. Hand off ready code when execution is unavailable. Text-only edits preserve code and measured outputs. Conclusions explain the finding and next action briefly. Refer to existing figures for values and develop future plans after adoption.
+Existing protocols and results remain their source of truth. Integrate edits in place. Each update includes the file link and an existing real notebook URL when available. Reuse known environments and checked pages. Hand off ready code when execution is unavailable. Text-only edits preserve code and measured outputs. Figure analysis explains value sources, mechanisms and the evidence role. Code outputs supply changing values; prose retains necessary reasoning. Future plans are developed after adoption.
 
 Projects that explicitly use the state helper retain existing `docs/ai-collab/<task>/` records and `.ai-collab/` state. Templates are in `assets/`; see the [recording guide](references/alignment-mcq.md). State records reflect actual decisions and evidence; they do not create authorization, acceptance, or extra review steps. Explicit user pauses and acceptance points remain binding.
 
