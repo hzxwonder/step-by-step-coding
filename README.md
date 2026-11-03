@@ -13,7 +13,7 @@ Short explanations support your current decision. Detailed evidence stays in the
 The skill instructions, templates, and teaching documents use Simplified Chinese.
 This README explains installation and use in English.
 
-Computational MVPs are delivered as a narrated Jupyter notebook. Discuss the idea and adopt the steps first. A step can contain several cells. Chat handoffs aim for a five-second scan. Automatic short checks have a 60-second group limit. Long or unknown-duration cells require manual execution. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
+Computational MVPs use a narrated Jupyter notebook. Adopt steps around visible research progress. A step can connect input, method, calls and observations across several cells. Save the current step and give its file link first. Run available short checks, then end the turn. Prepare environments and pages later when needed. Chat handoffs aim for a five-second scan. Short checks have a 60-second group limit; long or unknown-duration cells require manual execution. [Open the runnable example](assets/mvp.ipynb). Routine implementation choices stay with the agent; questions focus on scientific meaning, resources, and permissions.
 
 The agent restores research progress internally, preserving adopted scientific and resource decisions while adjusting engineering plans as needed. The notebook teaches the current method, control, and actual results through short code cells, reusing valid implementations. Concepts, examples, and diagrams are added when they help current understanding or you ask for them. The real comparison takes priority over tutorial completeness, layout, and explanations of every metric. Infrastructure uses established modules.
 
@@ -40,9 +40,9 @@ You can answer in your own words or ask for an example. You do not need to selec
 
 For example: **Should this experiment compare overall performance or test a specific mechanism?** This changes the controls and observations.
 The agent connects your decision to formulas, code, and evaluation rules, then explains the result.
-If you feel lost, it walks through the current case with a short explanation before adding detail. Existing valid checks are reused. The first comparison uses only its necessary path; feedback speed is improved after an informative observation.
+If you feel lost, it walks through the current case with a short explanation before adding detail. Existing valid checks are reused. The first step delivers a runnable path for the core question. Explanations and later scope develop through feedback.
 
-The [Chinese notebook writing conventions](references/notebook-cells.md#中文教学写法与结果判读) specify terminology, metric denominators and comparison scales, distinguish percentage points from relative changes, and keep unrun, failed and inconclusive states separate. Figures identify units, comparators and statistical meaning; uncertainty names the actual missing evidence.
+The [Chinese notebook writing conventions](references/notebook-cells.md#中文结果与图表) specify terminology, metric denominators and comparison scales, distinguish percentage points from relative changes, and keep unrun, failed and inconclusive states separate. Figures identify units, comparators and statistical meaning; uncertainty names the actual missing evidence.
 
 ## Requirements
 
@@ -137,7 +137,7 @@ mvp.ipynb              # Design, readable implementation, observations, and repr
 evidence/              # Raw results and logs when needed
 ```
 
-Existing protocols and results remain their source of truth. New explanations, examples, and code are integrated where they belong; affected parts are checked so the notebook remains readable and runnable from the start. Each update includes the existing real notebook URL and file link. Browser checks occur at the first teaching handoff or after relevant changes; layout and styling do not delay core computation.
+Existing protocols and results remain their source of truth. Integrate edits in place. Each update includes the file link and an existing real notebook URL when available. Reuse known environments and checked pages. Hand off ready code when execution is unavailable. Text-only edits preserve code and measured outputs. Conclusions explain the finding and next action briefly. Refer to existing figures for values and develop future plans after adoption.
 
 Projects that explicitly use the state helper retain existing `docs/ai-collab/<task>/` records and `.ai-collab/` state. Templates are in `assets/`; see the [recording guide](references/alignment-mcq.md). State records reflect actual decisions and evidence; they do not create authorization, acceptance, or extra review steps. Explicit user pauses and acceptance points remain binding.
 
