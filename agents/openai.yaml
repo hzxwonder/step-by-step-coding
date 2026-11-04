@@ -1,4 +1,4 @@
 interface:
   display_name: "科研逐步编程 / Step-by-Step Coding"
   short_description: "从研究问题出发，先跑最小实验，掌握对照、指标、资源与关键实现，用真实证据逐步推进"
-  default_prompt: "请用 $step-by-step-coding 接续当前研究，沿用已采用路线，缺少路线时先讨论 MVP 证据步骤，再逐步共创一个可运行的主 Notebook；每步用相邻说明、代码、图表和分析交付结果，结合我的反馈原位完善。"
+  default_prompt: "请用 $step-by-step-coding 接续当前研究，沿用已采用路线，缺少路线时先讨论 MVP 证据步骤，再逐步共创一个可运行的主 Notebook；每步展示关键中间产物的实际结构、内容与取用，用相邻说明、代码、图表和分析交付结果，结合我的反馈原位完善。"
